@@ -1,11 +1,12 @@
 import { Edit2, MapPin, Plus, Trash2, X } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
     FlatList,
     Modal,
     Platform,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -30,6 +31,7 @@ interface Address {
 const AddressPage = () => {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -52,7 +54,6 @@ const AddressPage = () => {
   const fetchAddresses = async () => {
     try {
       const response = await axiosInstance.get("/addresses");
-      // Handle both array or single object response based on your logs
       setAddresses(
         Array.isArray(response.data) ? response.data : [response.data],
       );
@@ -60,89 +61,92 @@ const AddressPage = () => {
       console.error("Fetch error:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchAddresses();
+  }, []);
+
+  const validateForm = () => {
+    const { fullName, phoneNumber, street, city, state, pinCode } = form;
+
+    if (!fullName || !phoneNumber || !street || !city || !state || !pinCode) {
+      showFeedback("Error", "Please fill in all required fields.");
+      return false;
+    }
+
+    if (phoneNumber.length !== 10) {
+      showFeedback("Error", "Phone number must be exactly 10 digits.");
+      return false;
+    }
+
+    if (pinCode.length !== 6) {
+      showFeedback("Error", "Pin Code must be exactly 6 digits.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const showFeedback = (title: string, message: string) => {
+    if (Platform.OS === "web") {
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
     }
   };
 
   const handleSave = async () => {
-    if (!form.fullName || !form.street || !form.pinCode) {
-      Alert.alert("Error", "Please fill required fields");
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
+      setLoading(true);
       if (editingId) {
-        // EDIT http://localhost:8080/api/addresses/{id}
         await axiosInstance.put(`/addresses/${editingId}`, form);
       } else {
-        // POST http://localhost:8080/api/addresses
         await axiosInstance.post("/addresses", form);
       }
       setModalVisible(false);
       resetForm();
       fetchAddresses();
+      showFeedback("Success", "Address saved successfully.");
     } catch (error) {
-      Alert.alert("Error", "Failed to save address");
+      showFeedback("Error", "Failed to save address.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = (id: string) => {
-    if (!id) {
-      Alert.alert("Error", "Missing Address ID");
-      return;
-    }
+    if (!id) return;
 
-    // Logic for Web
     if (Platform.OS === "web") {
-      const confirmed = window.confirm(
-        "Are you sure you want to remove this address?",
-      );
-      if (confirmed) {
+      if (window.confirm("Are you sure you want to delete this address?")) {
         executeDelete(id);
       }
-    }
-    // Logic for Android/iOS
-    else {
-      Alert.alert(
-        "Delete Address",
-        "Are you sure you want to remove this address?",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: () => executeDelete(id),
-          },
-        ],
-      );
+    } else {
+      Alert.alert("Delete Address", "Are you sure?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => executeDelete(id),
+        },
+      ]);
     }
   };
 
-  // Move the actual API call to a separate helper function
   const executeDelete = async (id: string) => {
     try {
       setLoading(true);
-
-      const response = await axiosInstance.delete(`/addresses/${id}`);
-
-      if (response.status === 200 || response.status === 204) {
-        // Optimistic UI Update
-        setAddresses((prev) => prev.filter((addr) => addr.id !== id));
-
-        if (Platform.OS === "web") {
-          alert("Address deleted successfully.");
-        } else {
-          Alert.alert("Success", "Address deleted successfully.");
-        }
-      }
-    } catch (error: any) {
-      console.error("DELETE FAILED:", error);
-      const msg = error.response?.data?.message || "Server connection failed";
-
-      if (Platform.OS === "web") {
-        alert("Delete Error: " + msg);
-      } else {
-        Alert.alert("Delete Error", msg);
-      }
+      await axiosInstance.delete(`/addresses/${id}`);
+      setAddresses((prev) => prev.filter((addr) => addr.id !== id));
+      showFeedback("Success", "Address deleted.");
+    } catch (error) {
+      showFeedback("Error", "Failed to delete address.");
     } finally {
       setLoading(false);
     }
@@ -177,7 +181,6 @@ const AddressPage = () => {
         </View>
         {item.default && <Text style={styles.defaultBadge}>DEFAULT</Text>}
       </View>
-
       <Text style={styles.addressText}>
         {item.street}, {item.city}
       </Text>
@@ -185,7 +188,6 @@ const AddressPage = () => {
         {item.state} - {item.pinCode}
       </Text>
       <Text style={styles.addressText}>Phone: {item.phoneNumber}</Text>
-
       <View style={styles.actionRow}>
         <TouchableOpacity
           onPress={() => openEdit(item)}
@@ -221,7 +223,7 @@ const AddressPage = () => {
         </TouchableOpacity>
       </View>
 
-      {loading ? (
+      {loading && !refreshing ? (
         <ActivityIndicator
           color="#F2A20C"
           size="large"
@@ -233,13 +235,20 @@ const AddressPage = () => {
           keyExtractor={(item) => item.id!}
           renderItem={renderAddressItem}
           contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#F2A20C"
+              colors={["#F2A20C"]}
+            />
+          }
           ListEmptyComponent={
             <Text style={styles.emptyText}>No addresses found.</Text>
           }
         />
       )}
 
-      {/* Add/Edit Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -251,7 +260,6 @@ const AddressPage = () => {
                 <X color="#FFF" size={24} />
               </TouchableOpacity>
             </View>
-
             <ScrollView showsVerticalScrollIndicator={false}>
               <TextInput
                 placeholder="FULL NAME"
@@ -265,8 +273,11 @@ const AddressPage = () => {
                 placeholderTextColor="#666"
                 style={styles.input}
                 keyboardType="phone-pad"
+                maxLength={10}
                 value={form.phoneNumber}
-                onChangeText={(t) => setForm({ ...form, phoneNumber: t })}
+                onChangeText={(t) =>
+                  setForm({ ...form, phoneNumber: t.replace(/[^0-9]/g, "") })
+                }
               />
               <TextInput
                 placeholder="STREET / HOUSE NO"
@@ -284,12 +295,15 @@ const AddressPage = () => {
                   onChangeText={(t) => setForm({ ...form, city: t })}
                 />
                 <TextInput
-                  placeholder="PIN CODE"
+                  placeholder="PIN"
                   placeholderTextColor="#666"
                   style={[styles.input, { flex: 1 }]}
                   keyboardType="number-pad"
+                  maxLength={6}
                   value={form.pinCode}
-                  onChangeText={(t) => setForm({ ...form, pinCode: t })}
+                  onChangeText={(t) =>
+                    setForm({ ...form, pinCode: t.replace(/[^0-9]/g, "") })
+                  }
                 />
               </View>
               <TextInput
@@ -299,7 +313,6 @@ const AddressPage = () => {
                 value={form.state}
                 onChangeText={(t) => setForm({ ...form, state: t })}
               />
-
               <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
                 <Text style={styles.saveButtonText}>SAVE ADDRESS</Text>
               </TouchableOpacity>
@@ -368,8 +381,6 @@ const styles = StyleSheet.create({
   actionBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
   actionText: { color: "#AAA", fontSize: 12, fontWeight: "700" },
   emptyText: { color: "#666", textAlign: "center", marginTop: 50 },
-
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.8)",
