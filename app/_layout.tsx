@@ -73,35 +73,49 @@ import { StatusBar } from "expo-status-bar";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import "react-native-reanimated";
-import Navbar from "../Component/navbar"; // Adjust this path based on where you saved the Navbar file
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context"; //
+import Navbar from "../Component/navbar";
 
-export default function RootLayout() {
+function RootLayoutContent() {
+  const insets = useSafeAreaInsets(); //
+
   return (
     <View style={styles.container}>
-      {/* 1. Add the Navbar here so it stays at the top of every screen */}
-      <Navbar />
+      {/* Apply top padding ONLY to the Navbar container to respect the notch */}
+      <View style={{ paddingTop: insets.top, backgroundColor: "#1A1A1A" }}>
+        <Navbar />
+      </View>
 
-      {/* 2. The Stack manages the content below the Navbar */}
       <Stack
         screenOptions={{
-          headerShown: false, //
-          animation: "fade", //
-          contentStyle: { backgroundColor: "#1A1A1A" }, // Maintains the vintage charcoal theme
+          headerShown: false,
+          animation: "fade",
+          contentStyle: { backgroundColor: "#1A1A1A" },
         }}
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
       </Stack>
 
-      {/* Matches the dark vintage charcoal theme */}
       <StatusBar style="light" />
     </View>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <RootLayoutContent />
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1A1A1A", // Ensure the root container matches your theme
+    backgroundColor: "#1A1A1A",
   },
 });
