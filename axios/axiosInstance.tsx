@@ -1,33 +1,55 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-// Define your IP and Port here globally
+// 🔹 Base URLs for different services
 const BASE_URL = "http://192.168.0.203:8080/api";
+const CATEGORY_BASE_URL = "http://192.168.0.157:8080/api";
 
-const axiosInstance = axios.create({
+// 🔹 Create axios instances
+export const mainApi = axios.create({
   baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request Interceptor: Automatically adds token to every request
-axiosInstance.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await AsyncStorage.getItem("token");
-      if (token) {
-        // Use standard Bearer token format
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (error) {
-      console.error("Error fetching token from storage", error);
-    }
-    return config;
+export const categoryApi = axios.create({
+  baseURL: CATEGORY_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
   },
-  (error) => {
-    return Promise.reject(error);
-  },
-);
+});
 
-export default axiosInstance;
+// 🔹 Common interceptor function
+const attachToken = (instance: any) => {
+  instance.interceptors.request.use(
+    async (config: any) => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      } catch (error) {
+        console.error("Token error:", error);
+      }
+      return config;
+    },
+    (error: any) => Promise.reject(error),
+  );
+
+  // 🔹 Optional: Response interceptor (better debugging)
+  instance.interceptors.response.use(
+    (response: any) => response,
+    (error: any) => {
+      console.error("API Error:", error?.response?.data || error.message);
+      return Promise.reject(error);
+    },
+  );
+};
+
+// 🔹 Attach interceptors to all instances
+attachToken(mainApi);
+attachToken(categoryApi);
+
+// 🔹 Export default (optional)
+export default mainApi;

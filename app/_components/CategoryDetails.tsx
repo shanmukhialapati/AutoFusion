@@ -1,7 +1,9 @@
+import { categoryApi } from "@/axios/axiosInstance";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   FlatList,
   Image,
@@ -14,234 +16,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-
-interface Item {
-  id: string;
-  name: string;
-  image: string;
-}
-interface Category {
-  id: string;
-  name: string;
-  subSections: Item[];
-}
-
-const CATEGORY_TREE: Category[] = [
-  {
-    id: "c1",
-    name: "Engine",
-    subSections: [
-      {
-        id: "1",
-        name: "Pistons",
-        image: "https://images.unsplash.com/photo-1606220838315-056192d5e927",
-      },
-      {
-        id: "2",
-        name: "Spark Plugs",
-        image: "https://images.unsplash.com/photo-1621905252472-e8c0b92d5e7b",
-      },
-      {
-        id: "3",
-        name: "Turbo Chargers",
-        image: "https://images.unsplash.com/photo-1580273916550-e323be2ae537",
-      },
-      {
-        id: "4",
-        name: "Valves",
-        image: "https://images.unsplash.com/photo-1593941707882-a56bbc8f7d8c",
-      },
-      {
-        id: "5",
-        name: "Cylinder Head",
-        image: "https://images.unsplash.com/photo-1625047509168-a7026f36de04",
-      },
-    ],
-  },
-
-  {
-    id: "c2",
-    name: "Brake System",
-    subSections: [
-      {
-        id: "6",
-        name: "Brake Pads",
-        image: "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e",
-      },
-      {
-        id: "7",
-        name: "Disc Rotors",
-        image: "https://images.unsplash.com/photo-1625047509056-33cce3f8f2ff",
-      },
-      {
-        id: "8",
-        name: "Brake Calipers",
-        image: "https://images.unsplash.com/photo-1581092335878-0c4b1c1f9c2d",
-      },
-      {
-        id: "9",
-        name: "Brake Fluid",
-        image: "https://images.unsplash.com/photo-1581093588401-22d52c6f3c5f",
-      },
-    ],
-  },
-
-  {
-    id: "c3",
-    name: "Filters",
-    subSections: [
-      {
-        id: "10",
-        name: "Oil Filter",
-        image: "https://images.unsplash.com/photo-1581092588429-0a5d4c6c9d9e",
-      },
-      {
-        id: "11",
-        name: "Air Filter",
-        image: "https://images.unsplash.com/photo-1625047509242-ec889b6bfa2c",
-      },
-      {
-        id: "12",
-        name: "Cabin Filter",
-        image: "https://images.unsplash.com/photo-1606220838315-056192d5e927",
-      },
-      {
-        id: "13",
-        name: "Fuel Filter",
-        image: "https://images.unsplash.com/photo-1597764690523-15bea4c581c9",
-      },
-    ],
-  },
-
-  {
-    id: "c4",
-    name: "Suspension and Arms",
-    subSections: [
-      {
-        id: "14",
-        name: "Shock Absorbers",
-        image: "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e",
-      },
-      {
-        id: "15",
-        name: "Control Arms",
-        image: "https://images.unsplash.com/photo-1581092335878-0c4b1c1f9c2d",
-      },
-      {
-        id: "16",
-        name: "Ball Joints",
-        image: "https://images.unsplash.com/photo-1625047509168-a7026f36de04",
-      },
-    ],
-  },
-
-  {
-    id: "c5",
-    name: "Lighting",
-    subSections: [
-      {
-        id: "17",
-        name: "Headlights",
-        image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70",
-      },
-      {
-        id: "18",
-        name: "Tail Lights",
-        image: "https://images.unsplash.com/photo-1511919884226-fd3cad34687c",
-      },
-      {
-        id: "19",
-        name: "Fog Lamps",
-        image: "https://images.unsplash.com/photo-1549921296-3a6b4b3b1e9c",
-      },
-    ],
-  },
-
-  {
-    id: "c6",
-    name: "Interior and Comfort",
-    subSections: [
-      {
-        id: "20",
-        name: "Seat Covers",
-        image: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6",
-      },
-      {
-        id: "21",
-        name: "Steering Covers",
-        image: "https://images.unsplash.com/photo-1511919884226-fd3cad34687c",
-      },
-      {
-        id: "22",
-        name: "Floor Mats",
-        image: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6",
-      },
-    ],
-  },
-
-  {
-    id: "c7",
-    name: "Tyres and Alloys",
-    subSections: [
-      {
-        id: "23",
-        name: "Alloy Wheels",
-        image: "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2",
-      },
-      {
-        id: "24",
-        name: "Car Tyres",
-        image: "https://images.unsplash.com/photo-1558981403-c5f9891c7f06",
-      },
-      {
-        id: "25",
-        name: "Wheel Covers",
-        image: "https://images.unsplash.com/photo-1619767886558-efdc259cde1a",
-      },
-    ],
-  },
-
-  {
-    id: "c8",
-    name: "Oils and Fluids",
-    subSections: [
-      {
-        id: "26",
-        name: "Engine Oil",
-        image: "https://images.unsplash.com/photo-1581092588429-0a5d4c6c9d9e",
-      },
-      {
-        id: "27",
-        name: "Coolant",
-        image: "https://images.unsplash.com/photo-1581093588401-22d52c6f3c5f",
-      },
-      {
-        id: "28",
-        name: "Brake Oil",
-        image: "https://images.unsplash.com/photo-1581093588401-22d52c6f3c5f",
-      },
-    ],
-  },
-
-  {
-    id: "c9",
-    name: "Transmission",
-    subSections: [
-      {
-        id: "29",
-        name: "Clutch Plates",
-        image: "https://images.unsplash.com/photo-1580273916550-e323be2ae537",
-      },
-      {
-        id: "30",
-        name: "Gearbox",
-        image: "https://images.unsplash.com/photo-1625047509056-33cce3f8f2ff",
-      },
-    ],
-  },
-];
-
-/* ================== GRID ITEM ================== */
+/* ================== GRID ITEM COMPONENT ================== */
 const GridItem = ({ item, index, isDesktop, onPress }: any) => {
   const scale = useRef(new Animated.Value(0.9)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -292,26 +67,77 @@ const GridItem = ({ item, index, isDesktop, onPress }: any) => {
 /* ================== MAIN COMPONENT ================== */
 export default function CategoryDetails() {
   const router = useRouter();
-  const { categoryName } = useLocalSearchParams();
+  const { categoryId, categoryName } = useLocalSearchParams();
   const { width } = useWindowDimensions();
 
   const isDesktop = width >= 1024;
   const isMobile = width < 768;
 
-  const [activeCat, setActiveCat] = useState<string>(
-    (categoryName as string) || "Engine",
+  // --- States ---
+  const [categories, setCategories] = useState<any[]>([]); // For Sidebar
+  const [subCategories, setSubCategories] = useState<any[]>([]); // For Grid
+  const [activeCatId, setActiveCatId] = useState<string>(categoryId as string);
+  const [activeCatName, setActiveCatName] = useState<string>(
+    categoryName as string,
   );
+  const [loading, setLoading] = useState(true);
   const [showDrawer, setShowDrawer] = useState(false);
 
-  const data = useMemo(() => {
-    return CATEGORY_TREE.find((c) => c.name === activeCat)?.subSections || [];
-  }, [activeCat]);
-
-  // Adjust columns based on platform if using vertical grid
   const numColumns = isDesktop ? 4 : isMobile ? 2 : 3;
+
+  // 1. Initial Load: Fetch all categories for sidebar
+  useEffect(() => {
+    fetchAllCategories();
+  }, []);
+
+  // 2. Fetch Subcategories whenever activeCatId changes
+  useEffect(() => {
+    if (activeCatId) {
+      fetchSubCategories();
+    }
+  }, [activeCatId]);
+
+  const fetchAllCategories = async () => {
+    try {
+      const response = await categoryApi.get("/categories"); // Adjust endpoint as needed
+      setCategories(response.data);
+
+      // If no categoryId was passed via params, default to the first one in the list
+      if (!activeCatId && response.data.length > 0) {
+        setActiveCatId(response.data[0].id.toString());
+        setActiveCatName(response.data[0].name);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  const fetchSubCategories = async () => {
+    try {
+      setLoading(true);
+      const response = await categoryApi.get(
+        `/subcategories/category/${activeCatId}`,
+      );
+
+      const formatted = response.data.map((item: any) => ({
+        id: item.id.toString(),
+        name: item.name,
+        image: item.photoUrl,
+      }));
+
+      setSubCategories(formatted);
+    } catch (error) {
+      console.error("Error fetching subcategories:", error);
+      setSubCategories([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
+      {/* Header */}
+
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity
@@ -322,7 +148,7 @@ export default function CategoryDetails() {
           </TouchableOpacity>
           <View>
             <Text style={styles.tagline}>COLLECTION</Text>
-            <Text style={styles.title}>{activeCat}</Text>
+            <Text style={styles.title}>{activeCatName || "Loading..."}</Text>
           </View>
         </View>
 
@@ -337,56 +163,80 @@ export default function CategoryDetails() {
       </View>
 
       <View style={styles.mainLayout}>
+        {/* Sidebar (Desktop) */}
         {isDesktop && (
           <View style={styles.sidebar}>
             <Text style={styles.sidebarHeader}>CATEGORIES</Text>
-            {CATEGORY_TREE.map((cat) => (
-              <TouchableOpacity
-                key={cat.id}
-                onPress={() => setActiveCat(cat.name)}
-                style={[
-                  styles.sidebarItem,
-                  activeCat === cat.name && styles.activeSidebar,
-                ]}
-              >
-                <Text
+            <ScrollView>
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  onPress={() => {
+                    setActiveCatId(cat.id.toString());
+                    setActiveCatName(cat.name);
+                  }}
                   style={[
-                    styles.sidebarText,
-                    activeCat === cat.name && styles.activeSidebarText,
+                    styles.sidebarItem,
+                    activeCatId === cat.id.toString() && styles.activeSidebar,
                   ]}
                 >
-                  {cat.name}
-                </Text>
-                {activeCat === cat.name && (
-                  <View style={styles.activeIndicator} />
-                )}
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.sidebarText,
+                      activeCatId === cat.id.toString() &&
+                        styles.activeSidebarText,
+                    ]}
+                  >
+                    {cat.name}
+                  </Text>
+                  {activeCatId === cat.id.toString() && (
+                    <View style={styles.activeIndicator} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         )}
 
+        {/* Main Content Grid */}
         <View
           style={[styles.content, isDesktop && { borderTopLeftRadius: 30 }]}
         >
-          <FlatList
-            data={data}
-            key={numColumns} // Key changes force re-render when columns change
-            keyExtractor={(item) => item.id}
-            numColumns={numColumns}
-            columnWrapperStyle={data.length > 1 ? styles.row : null}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item, index }) => (
-              <GridItem
-                item={item}
-                index={index}
-                isDesktop={isDesktop}
-                onPress={() => console.log("Selected:", item.name)}
-              />
-            )}
-          />
+          {loading ? (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color="#B8860B" />
+            </View>
+          ) : (
+            <FlatList
+              data={subCategories}
+              key={numColumns}
+              keyExtractor={(item) => item.id}
+              numColumns={numColumns}
+              columnWrapperStyle={subCategories.length > 1 ? styles.row : null}
+              contentContainerStyle={styles.listContent}
+              renderItem={({ item, index }) => (
+                <GridItem
+                  item={item}
+                  index={index}
+                  isDesktop={isDesktop}
+                  onPress={() => {
+                    router.push({
+                      pathname: "./productsDetails",
+                      params: {
+                        subCategoryId: item.id,
+                        subCategoryName: item.name,
+                        parentCategory: activeCatName,
+                      },
+                    });
+                  }}
+                />
+              )}
+            />
+          )}
         </View>
       </View>
 
+      {/* Drawer Overlay (Mobile) */}
       {showDrawer && (
         <View style={styles.drawerOverlay}>
           <Pressable
@@ -401,22 +251,26 @@ export default function CategoryDetails() {
               </TouchableOpacity>
             </View>
             <ScrollView>
-              {CATEGORY_TREE.map((cat) => (
+              {categories.map((cat) => (
                 <TouchableOpacity
                   key={cat.id}
                   onPress={() => {
-                    setActiveCat(cat.name);
+                    setActiveCatId(cat.id.toString());
+                    setActiveCatName(cat.name);
                     setShowDrawer(false);
                   }}
                   style={[
                     styles.drawerItem,
-                    activeCat === cat.name && styles.activeDrawerItem,
+                    activeCatId === cat.id.toString() &&
+                      styles.activeDrawerItem,
                   ]}
                 >
                   <Text
                     style={[
                       styles.drawerText,
-                      activeCat === cat.name && { color: "#FFD700" },
+                      activeCatId === cat.id.toString() && {
+                        color: "#FFD700",
+                      },
                     ]}
                   >
                     {cat.name}
@@ -550,4 +404,10 @@ const styles = StyleSheet.create({
   drawerItem: { padding: 20, borderBottomWidth: 1, borderBottomColor: "#222" },
   activeDrawerItem: { backgroundColor: "#333" },
   drawerText: { color: "#fff", fontSize: 16 },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
 });

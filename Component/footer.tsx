@@ -1,10 +1,12 @@
 import { FontAwesome, FontAwesome6 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { X } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   Dimensions,
   Linking,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -22,39 +24,66 @@ interface InfoContent {
 const Footer = () => {
   const [selectedInfo, setSelectedInfo] = useState<InfoContent | null>(null);
   const router = useRouter();
+  const slideAnim = useRef(new Animated.Value(20)).current; // Start slightly offset
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   const infoData: Record<string, InfoContent> = {
     "About Us": {
       title: "OUR HERITAGE",
       content:
-        "AUTOFUSION started in a small garage in Detroit with one goal: precision. Today, we supply the world with high-performance parts.",
+        "AUTOFUSION started in a small garage with one goal: precision performance parts.",
     },
     Support: {
       title: "24/7 TECHNICAL HELP",
       content:
-        "Our master mechanics are available via live chat or phone (1-800-AUTO) to help with your build.",
+        "Our master mechanics are available via live chat to help with your build.",
     },
     "Contact Us": {
       title: "GET IN TOUCH",
-      content:
-        "Email: support@autofusion.com | Phone: 1-800-AUTO-FUSE | Location: Detroit Tech Hub.",
+      content: "Email: support@autofusion.com | Phone: 1-800-AUTO-FUSE",
     },
   };
 
-  const navLinks = [
-    { label: "Home", path: "/" },
-    { label: "Cart", path: "/cart" },
-    { label: "Wishlist", path: "/wishlist" },
-    { label: "Orders", path: "/orders" },
-  ];
-
-  const openLink = (url: string) => Linking.openURL(url);
+  useEffect(() => {
+    if (selectedInfo) {
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 20,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [selectedInfo]);
 
   return (
     <View style={styles.container}>
       {/* --- FLOATING INFO PANEL --- */}
       {selectedInfo && (
-        <View style={styles.floatingInfo}>
+        <Animated.View
+          style={[
+            styles.floatingInfo,
+            { opacity: opacityAnim, transform: [{ translateY: slideAnim }] },
+          ]}
+        >
           <View style={styles.infoInner}>
             <View style={styles.infoTextSide}>
               <Text style={styles.infoTitle}>{selectedInfo.title}</Text>
@@ -64,15 +93,16 @@ const Footer = () => {
               onPress={() => setSelectedInfo(null)}
               style={styles.infoCloseBtn}
             >
-              <X size={20} color="#000" />
+              <X size={18} color="#000" />
             </Pressable>
           </View>
-        </View>
+        </Animated.View>
       )}
 
+      {/* Main Footer Content */}
       <View style={styles.contentPadding}>
         <View style={styles.mainGrid}>
-          {/* Brand & Mission */}
+          {/* Brand Section */}
           <View style={styles.brandSection}>
             <Text style={styles.brandName}>AUTOFUSION</Text>
             <Text style={styles.brandTagline}>
@@ -95,13 +125,13 @@ const Footer = () => {
           <View style={styles.linksContainer}>
             <View style={styles.linkCol}>
               <Text style={styles.header}>SHOP</Text>
-              {navLinks.map((item) => (
+              {["Home", "Cart", "Wishlist", "Orders"].map((label) => (
                 <Pressable
-                  key={item.label}
-                  onPress={() => router.push(item.path as any)}
+                  key={label}
                   style={styles.linkPress}
+                  onPress={() => router.push(`/${label.toLowerCase()}` as any)}
                 >
-                  <Text style={styles.linkText}>{item.label}</Text>
+                  <Text style={styles.linkText}>{label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -111,8 +141,8 @@ const Footer = () => {
               {["About Us", "Support", "Contact Us"].map((label) => (
                 <Pressable
                   key={label}
-                  onPress={() => setSelectedInfo(infoData[label])}
                   style={styles.linkPress}
+                  onPress={() => setSelectedInfo(infoData[label])}
                 >
                   <Text style={styles.linkText}>{label}</Text>
                 </Pressable>
@@ -122,24 +152,24 @@ const Footer = () => {
         </View>
       </View>
 
-      {/* --- STORE DOWNLOAD BAR --- */}
+      {/* Download Bar */}
       <View style={styles.downloadBar}>
         <Text style={styles.downloadHeading}>SYNC WITH YOUR GARAGE</Text>
         <View style={styles.btnGroup}>
           <Pressable
             style={styles.storeBtn}
-            onPress={() => openLink("https://apple.com")}
+            onPress={() => Linking.openURL("https://apple.com")}
           >
-            <FontAwesome name="apple" size={22} color="black" />
+            <FontAwesome name="apple" size={20} color="black" />
             <View style={styles.btnLabel}>
               <Text style={styles.btnTopText}>App Store</Text>
             </View>
           </Pressable>
           <Pressable
             style={[styles.storeBtn, { backgroundColor: "#F2A20C" }]}
-            onPress={() => openLink("https://google.com")}
+            onPress={() => Linking.openURL("https://google.com")}
           >
-            <FontAwesome name="play" size={18} color="black" />
+            <FontAwesome name="play" size={16} color="black" />
             <View style={styles.btnLabel}>
               <Text style={styles.btnTopText}>Google Play</Text>
             </View>
@@ -147,6 +177,7 @@ const Footer = () => {
         </View>
       </View>
 
+      {/* Bottom Status */}
       <View style={styles.bottomStatus}>
         <Text style={styles.copyText}>© 2026 AUTOFUSION INDUSTRIES</Text>
         <View style={styles.badge}>
@@ -163,9 +194,53 @@ const styles = StyleSheet.create({
     backgroundColor: "#121212",
     borderTopWidth: 1,
     borderColor: "#222",
+    position: "relative",
+  },
+  floatingInfo: {
+    position: "absolute",
+    bottom: "100%",
+    left: isMobile ? 10 : 24,
+    right: isMobile ? 10 : 24,
+    marginBottom: 15,
+    zIndex: 999,
+    backgroundColor: "#F2A20C",
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -10 },
+        shadowOpacity: 0.4,
+        shadowRadius: 15,
+      },
+      android: { elevation: 20 },
+      web: { boxShadow: "0 -10px 25px rgba(0, 0, 0, 0.21)" },
+    }),
+  },
+  infoInner: { flexDirection: "row", padding: 18, alignItems: "center" },
+  infoTextSide: { flex: 1, paddingRight: 10 },
+  infoTitle: {
+    color: "#000",
+    fontWeight: "900",
+    fontSize: 13,
+    letterSpacing: 1,
+    marginBottom: 4,
+    textTransform: "uppercase",
+  },
+  infoContentText: {
+    color: "#1A1A1A",
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  infoCloseBtn: {
+    width: 32,
+    height: 32,
+    backgroundColor: "rgba(0,0,0,0.1)",
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   contentPadding: { paddingHorizontal: 24, paddingVertical: 50 },
-
   mainGrid: {
     flexDirection: isMobile ? "column" : "row",
     justifyContent: "space-between",
@@ -184,7 +259,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     letterSpacing: 1,
   },
-
   linksContainer: {
     flexDirection: "row",
     flex: 1,
@@ -200,8 +274,6 @@ const styles = StyleSheet.create({
   },
   linkPress: { marginBottom: 14 },
   linkText: { color: "#AAA", fontSize: 13, fontWeight: "600" },
-
-  // Socials
   socialRow: { flexDirection: "row", gap: 12, marginTop: 25 },
   socialCircle: {
     width: 38,
@@ -213,42 +285,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#333",
   },
-
-  floatingInfo: {
-    position: "absolute",
-    top: -20,
-    left: 20,
-    right: 20,
-    zIndex: 100,
-    backgroundColor: "#F2A20C",
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  infoInner: { flexDirection: "row", padding: 20, alignItems: "center" },
-  infoTextSide: { flex: 1 },
-  infoTitle: {
-    color: "#000",
-    fontWeight: "900",
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  infoContentText: {
-    color: "#333",
-    fontSize: 12,
-    fontWeight: "600",
-    lineHeight: 18,
-  },
-  infoCloseBtn: {
-    padding: 8,
-    backgroundColor: "rgba(0,0,0,0.1)",
-    borderRadius: 20,
-  },
-
-  // Download Bar
   downloadBar: {
     backgroundColor: "#000",
     paddingVertical: 30,
@@ -257,7 +293,7 @@ const styles = StyleSheet.create({
     borderColor: "#1A1A1A",
   },
   downloadHeading: {
-    color: "#444",
+    color: "#818181",
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 2,
@@ -276,7 +312,6 @@ const styles = StyleSheet.create({
   },
   btnLabel: { marginLeft: 8 },
   btnTopText: { fontSize: 13, fontWeight: "900", color: "#000" },
-
   bottomStatus: {
     height: 50,
     backgroundColor: "#1f1d1dcf",
@@ -289,8 +324,13 @@ const styles = StyleSheet.create({
   },
   copyText: { color: "#9a9999", fontSize: 10, fontWeight: "700" },
   badge: { flexDirection: "row", alignItems: "center", gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#0F0" },
-  badgeText: { color: "#444", fontSize: 9, fontWeight: "900" },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgb(8, 221, 86)",
+  },
+  badgeText: { color: "#918e8e", fontSize: 9, fontWeight: "900" },
 });
 
 export default Footer;

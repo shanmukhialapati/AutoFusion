@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
   },
   priceText: {
-    color: "#FFD700",
+    color: "#F2A20C",
     fontWeight: "900",
     fontSize: 16,
   },
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     color: "#22C55E",
   },
   cartBtn: {
-    backgroundColor: "#FFD700",
+    backgroundColor: "#F2A20C",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,

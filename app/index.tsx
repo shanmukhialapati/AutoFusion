@@ -1,4 +1,3 @@
-import Footer from "@/Component/footer";
 import { useRouter } from "expo-router";
 import {
   ChevronLeft,
@@ -7,8 +6,9 @@ import {
   Plane,
   Star,
 } from "lucide-react-native";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   FlatList,
@@ -20,14 +20,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { categoryApi } from "../axios/axiosInstance";
+import Footer from "../Component/footer";
 import ProductCard from "../Component/productCard";
-
 const PRODUCT_WIDTH = 240;
 const CATEGORY_WIDTH = 100;
 const { height, width } = Dimensions.get("window");
 const BANNER_HEIGHT = height * 0.7;
 
-// Platform checks
 const isWeb = Platform.OS === "web";
 const isMobile = Platform.OS === "ios" || Platform.OS === "android";
 
@@ -41,99 +41,104 @@ interface Product {
   image: string;
 }
 
-const CATEGORIES = [
-  {
-    id: "c1",
-    name: "Engine",
-    image:
-      "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c2",
-    name: "Brake System",
-    image:
-      "https://images.unsplash.com/photo-1613214150384-14921ff659b2?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c3",
-    name: "Suspension and Arms",
-    image:
-      "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c4",
-    name: "Lighting",
-    image:
-      "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c5",
-    name: "Interior and comfort",
-    image:
-      "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c6",
-    name: "Wheels",
-    image:
-      "https://images.unsplash.com/photo-1551522435-a13afa10f103?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c7",
-    name: "Air Conditioning",
-    image:
-      "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c8",
-    name: "Fuel Supply System",
-    image:
-      "https://images.unsplash.com/photo-1604147706283-9d7c5c2c8b3e?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c9",
-    name: "Sensors Relays and Control units",
-    image:
-      "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c10",
-    name: "Oils and Fluids",
-    image:
-      "https://images.unsplash.com/photo-1604335399105-a0c585fd81a9?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c11",
-    name: "Filters",
-    image:
-      "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c12",
-    name: "Exhaust System",
-    image:
-      "https://images.unsplash.com/photo-1597007030739-6d2e1b3f9b4f?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c13",
-    name: "Transmission",
-    image:
-      "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c14",
-    name: "Steering",
-    image:
-      "https://images.unsplash.com/photo-1603386329225-868f9b1c6b2f?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    id: "c15",
-    name: "Car Accessories",
-    image:
-      "https://images.unsplash.com/photo-1625047509168-a7026f36de04?auto=format&fit=crop&w=800&q=80",
-  },
-];
-
+// const CATEGORIES = [
+//   {
+//     id: "c1",
+//     name: "Engine",
+//     image:
+//       "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c2",
+//     name: "Brake System",
+//     image:
+//       "https://images.unsplash.com/photo-1613214150384-14921ff659b2?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c3",
+//     name: "Suspension and Arms",
+//     image:
+//       "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c4",
+//     name: "Lighting",
+//     image:
+//       "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c5",
+//     name: "Interior and comfort",
+//     image:
+//       "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c6",
+//     name: "Wheels",
+//     image:
+//       "https://images.unsplash.com/photo-1551522435-a13afa10f103?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c7",
+//     name: "Air Conditioning",
+//     image:
+//       "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c8",
+//     name: "Fuel Supply System",
+//     image:
+//       "https://images.unsplash.com/photo-1604147706283-9d7c5c2c8b3e?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c9",
+//     name: "Sensors Relays and Control units",
+//     image:
+//       "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c10",
+//     name: "Oils and Fluids",
+//     image:
+//       "https://images.unsplash.com/photo-1604335399105-a0c585fd81a9?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c11",
+//     name: "Filters",
+//     image:
+//       "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c12",
+//     name: "Exhaust System",
+//     image:
+//       "https://images.unsplash.com/photo-1597007030739-6d2e1b3f9b4f?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c13",
+//     name: "Transmission",
+//     image:
+//       "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c14",
+//     name: "Steering",
+//     image:
+//       "https://images.unsplash.com/photo-1603386329225-868f9b1c6b2f?auto=format&fit=crop&w=800&q=80",
+//   },
+//   {
+//     id: "c15",
+//     name: "Car Accessories",
+//     image:
+//       "https://images.unsplash.com/photo-1625047509168-a7026f36de04?auto=format&fit=crop&w=800&q=80",
+//   },
+// ];
+interface Category {
+  id: number;
+  name: string;
+  photoUrl: string;
+  isActive: boolean;
+}
 const PRODUCTS: Product[] = [
   {
     id: "1",
@@ -214,11 +219,44 @@ export default function HomePage() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const categoryRef = useRef<FlatList>(null);
   const productRef = useRef<FlatList>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   const categoryX = useRef(0);
   const productX = useRef(0);
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+
+      const response = await categoryApi.get("/categories");
+
+      console.log("API DATA:", response.data);
+
+      if (!Array.isArray(response.data)) {
+        setCategories([]);
+        return;
+      }
+
+      const activeCats = response.data.filter(
+        (cat: Category) => cat.isActive === true,
+      );
+
+      setCategories(activeCats);
+    } catch (error: any) {
+      console.error(
+        "Error fetching categories:",
+        error?.response?.data || error.message,
+      );
+      setCategories([]);
+    } finally {
+      setLoading(false);
+    }
+  };
   const headerTranslate = scrollY.interpolate({
     inputRange: [0, BANNER_HEIGHT],
     outputRange: [0, -BANNER_HEIGHT / 3],
@@ -301,38 +339,55 @@ export default function HomePage() {
                 </TouchableOpacity>
               </View>
             </View>
-            <FlatList
-              ref={categoryRef}
-              data={CATEGORIES}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              onScroll={(e) => {
-                categoryX.current = e.nativeEvent.contentOffset.x;
-              }}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  style={[
-                    styles.catCard,
-                    activeCategory === item.name && styles.activeCatCard,
-                  ]}
-                  onPress={() => {
-                    setActiveCategory(item.name);
-                    router.push({
-                      pathname: "/_components/CategoryDetails",
-                      params: { categoryName: item.name },
-                    });
-                  }}
-                >
-                  <View style={styles.catImgWrapper}>
-                    <Image source={{ uri: item.image }} style={styles.catImg} />
-                  </View>
-                  <Text style={styles.catText} numberOfLines={2}>
-                    {item.name}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            />
+            {loading ? (
+              <ActivityIndicator color="#590080" style={{ padding: 20 }} />
+            ) : categories.length === 0 ? (
+              <View style={{ padding: 20, alignItems: "center" }}>
+                <Text style={{ color: "#999", fontWeight: "600" }}>
+                  No categories found
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                ref={categoryRef}
+                data={categories}
+                keyExtractor={(item) => item.id.toString()}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                onScroll={(e) => {
+                  categoryX.current = e.nativeEvent.contentOffset.x;
+                }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={[
+                      styles.catCard,
+                      activeCategory === item.name && styles.activeCatCard,
+                    ]}
+                    onPress={() => {
+                      setActiveCategory(item.name);
+                      router.push({
+                        pathname: "/_components/CategoryDetails",
+                        params: {
+                          categoryName: item.name,
+                          categoryId: item.id.toString(), // PASS THE ID HERE
+                        },
+                      });
+                    }}
+                  >
+                    <View style={styles.catImgWrapper}>
+                      <Image
+                        source={{ uri: item.photoUrl }}
+                        style={styles.catImg}
+                      />
+                    </View>
+                    <Text style={styles.catText} numberOfLines={2}>
+                      {item.name}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
           </View>
 
           {/* Featured Section */}

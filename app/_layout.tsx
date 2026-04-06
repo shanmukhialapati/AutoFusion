@@ -30,7 +30,9 @@ function RootLayoutContent() {
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
       </Stack>
-
+      {/* <View style={{ paddingTop: insets.top, backgroundColor: "#1A1A1A" }}>
+        <Footer />
+      </View> */}
       <StatusBar style="light" />
     </View>
   );
