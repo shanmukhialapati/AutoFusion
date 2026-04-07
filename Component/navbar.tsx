@@ -3,6 +3,8 @@ import {
   Bell,
   Heart,
   LogOut,
+  MapPin,
+  Package,
   Search,
   ShoppingCart,
   User,
@@ -120,9 +122,16 @@ const Navbar = () => {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuItem}
+              onPress={() => router.push("/orders")}
+            >
+              <Package color="#FFF" size={20} />
+              <Text style={styles.menuText}>ORDER HISTORY</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
               onPress={() => router.push("/address")}
             >
-              <ShoppingCart color="#FFF" size={20} />
+              <MapPin color="#FFF" size={20} />
               <Text style={styles.menuText}>ADDRESS</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
