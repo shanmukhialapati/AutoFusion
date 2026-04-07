@@ -2,11 +2,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
 // 🔹 Base URLs for different services
+const ORDER_BASE_URL = "http://192.168.0.225:8080/api";
 const BASE_URL = "http://192.168.0.223:8080/api";
 const CATEGORY_BASE_URL = "http://192.168.0.177:8080/api";
-const ORDER_BASE_URL = "http://192.168.0.225:8080/api";
+const CART_URL = "http://192.168.0.225:8080/api";
 
-// 🔹 Create axios instances
 export const mainApi = axios.create({
   baseURL: BASE_URL,
   headers: {
@@ -16,6 +16,12 @@ export const mainApi = axios.create({
 
 export const categoryApi = axios.create({
   baseURL: CATEGORY_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+export const cartApi = axios.create({
+  baseURL: CART_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -45,7 +51,6 @@ const attachToken = (instance: any) => {
     (error: any) => Promise.reject(error),
   );
 
-  // 🔹 Optional: Response interceptor (better debugging)
   instance.interceptors.response.use(
     (response: any) => response,
     (error: any) => {
@@ -59,6 +64,7 @@ const attachToken = (instance: any) => {
 attachToken(mainApi);
 attachToken(categoryApi);
 attachToken(orderApi);
+attachToken(cartApi);
 
 // 🔹 Export default (optional)
 export default mainApi;

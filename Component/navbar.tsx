@@ -1,6 +1,8 @@
+import { categoryApi } from "@/axios/axiosInstance";
 import { useRouter } from "expo-router";
 import {
   Bell,
+  ChevronDown,
   Heart,
   LogOut,
   MapPin,
@@ -10,8 +12,9 @@ import {
   User,
   X,
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  FlatList,
   Modal,
   Platform,
   Pressable,
@@ -20,74 +23,270 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
-import { useAuth } from "../Context/authcontext"; //
+import { useAuth } from "../Context/authcontext";
+import { useNotifications } from "../Context/notificationContext";
+import NotificationDrawer from "./NotificationDrawer";
 
-const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, setAuth } = useAuth(); //
-  const router = useRouter();
+const SearchBar = React.memo(
+  ({
+    selectedBrand,
+    setSelectedBrand,
+    showBrandDropdown,
+    setShowBrandDropdown,
+    searchQuery,
+    setSearchQuery,
+    handleSearchSubmit,
+    brands,
+  }: any) => {
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+    useEffect(() => {
+      const delay = setTimeout(async () => {
+        if (!searchQuery.trim()) {
+          setSuggestions([]);
+          return;
+        }
 
-  const handleProfilePress = () => {
-    if (!user) {
-      router.push("/login"); //
-    } else {
-      toggleMenu();
-    }
-  };
+        try {
+          const res = await fetch(
+            `http://192.168.0.157:8080/api/products/search?q=${searchQuery}`,
+          );
+          const data = await res.json();
+          setSuggestions(Array.isArray(data) ? data : []);
+          setShowSuggestions(true);
+        } catch (err) {
+          console.log("Search error", err);
+        }
+      }, 400);
 
-  const handleLogout = async () => {
-    await setAuth(null); //
-    setIsMenuOpen(false);
-    router.replace("/login");
-  };
+      return () => clearTimeout(delay);
+    }, [searchQuery]);
 
-  return (
-    <View style={styles.navContainer}>
-      {/* Top Section: Brand and Icons (Always in a row) */}
-      <View style={styles.topSection}>
-        <Text style={styles.brandName} onPress={() => router.push("/")}>
-          AUTOFUSION
-        </Text>
+    return (
+      <View style={{ position: "relative" }}>
+        <View style={styles.combinedSearchContainer}>
+          <TouchableOpacity
+            style={styles.brandSelector}
+            onPress={() => setShowBrandDropdown(!showBrandDropdown)}
+          >
+            <Text style={styles.brandSelectorText} numberOfLines={1}>
+              {selectedBrand ? selectedBrand.name.toUpperCase() : "ALL BRANDS"}
+            </Text>
+            <ChevronDown color="#888" size={14} />
+          </TouchableOpacity>
 
-        {/* Search Box: Only rendered here for Web (inline) */}
-        {Platform.OS === "web" && (
-          <View style={styles.searchContainer}>
-            <Search color="#888" size={18} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="SEARCH PARTS..."
-              placeholderTextColor="#666"
+          <View style={styles.divider} />
+
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search parts..."
+            placeholderTextColor="#666"
+            value={searchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              setShowSuggestions(true);
+            }}
+            onSubmitEditing={handleSearchSubmit}
+            blurOnSubmit={false}
+          />
+
+          <TouchableOpacity
+            onPress={handleSearchSubmit}
+            style={styles.searchIconBtn}
+          >
+            <Search color="#F2A20C" size={20} />
+          </TouchableOpacity>
+        </View>
+
+        {showBrandDropdown && (
+          <View style={styles.dropdownOverlay}>
+            <FlatList
+              data={[{ id: "null", name: "All Brands" }, ...brands]}
+              keyExtractor={(item, index) =>
+                item?.id ? `brand-${item.id}` : `index-${index}`
+              }
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.brandItem}
+                  onPress={() => {
+                    setSelectedBrand(item.id === "null" ? null : item);
+                    setShowBrandDropdown(false);
+                  }}
+                >
+                  <Text style={styles.brandItemText}>
+                    {item?.name?.toUpperCase()}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              keyboardShouldPersistTaps="handled"
             />
           </View>
         )}
 
-        {/* Icons Group */}
+        {showSuggestions && suggestions.length > 0 && (
+          <View style={styles.suggestionBox}>
+            <FlatList
+              data={suggestions}
+              keyExtractor={(item, index) =>
+                item?.id ? `s-${item.id}` : `i-${index}`
+              }
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.suggestionItem}
+                  onPress={() => {
+                    setSearchQuery(item.name);
+                    setShowSuggestions(false);
+                    handleSearchSubmit();
+                  }}
+                >
+                  <Text style={styles.suggestionText}>{item.name}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        )}
+      </View>
+    );
+  },
+);
+interface NavbarProps {
+  title?: string;
+  onMenuPress?: () => void;
+  onSearchPress?: () => void;
+  onNotificationsPress?: () => void;
+  onProfilePress?: () => void;
+  isScrolled?: boolean;
+}
+const Navbar = ({ onNotificationsPress }: NavbarProps) => {
+  const router = useRouter();
+  const { user, setAuth } = useAuth();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showBrandDropdown, setShowBrandDropdown] = useState(false);
+  const [isNotifyOpen, setIsNotifyOpen] = useState(false);
+
+  const { deactivateDevice, unreadCount } = useNotifications();
+  const [brands, setBrands] = useState<any[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+  const handleLogout = async () => {
+    await setAuth(null);
+    setIsMenuOpen(false);
+    router.replace("/login");
+  };
+  useEffect(() => {
+    const fetchBrands = async () => {
+      try {
+        const res = await categoryApi.get("/vehicles/brands");
+
+        const data = res.data;
+
+        if (data?.brands && Array.isArray(data.brands)) {
+          const formatted = data.brands.map((b: string, index: number) => ({
+            id: index.toString(),
+            name: b,
+          }));
+          setBrands(formatted);
+        } else {
+          setBrands([]);
+        }
+      } catch (error) {
+        console.error("Error fetching brands:", error);
+      }
+    };
+
+    fetchBrands();
+  }, []);
+
+  const handleSearchSubmit = (overrideQuery?: string) => {
+    // const finalQuery = (overrideQuery || searchQuery).trim();
+
+    // If nothing is selected and query is empty, do nothing
+    if (!overrideQuery && !selectedBrand) return;
+    router.push({
+      pathname: "../app/_components/productsDetails",
+      params: {
+        q: overrideQuery || searchQuery,
+        brandId: selectedBrand?.id || "",
+        brandName: selectedBrand?.name || "All Brands",
+        isSearch: "true",
+      },
+    });
+    setShowSuggestions(false);
+  };
+
+  return (
+    <View style={styles.navContainer}>
+      <View style={styles.topSection}>
+        <Text style={styles.brandName} onPress={() => router.push("/")}>
+          AUTO<span style={styles.subbrandName}>FUSION</span>
+        </Text>
+
+        {Platform.OS === "web" && (
+          <View style={styles.webSearchWrapper}>
+            <SearchBar
+              selectedBrand={selectedBrand}
+              setSelectedBrand={setSelectedBrand}
+              showBrandDropdown={showBrandDropdown}
+              setShowBrandDropdown={setShowBrandDropdown}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              handleSearchSubmit={handleSearchSubmit}
+              brands={brands}
+            />
+          </View>
+        )}
+
         <View style={styles.iconGroup}>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Bell color="#FFF" size={22} />
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => setIsNotifyOpen(true)}
+          >
+            <Bell color="white" size={24} />
+            {unreadCount > 0 && (
+              <View style={styles.badgeContainer}>
+                <Text style={styles.badgeText}>
+                  {/* {unreadCount > 9 ? "9+" : unreadCount} */}
+                  {unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={handleProfilePress}>
+
+          <NotificationDrawer
+            isOpen={isNotifyOpen}
+            onClose={() => setIsNotifyOpen(false)}
+          />
+
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => (user ? setIsMenuOpen(true) : router.push("/login"))}
+          >
             <User color={user ? "#F2A20C" : "#FFF"} size={24} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Bottom Section: Search Box (Only rendered here for Android/iOS) */}
       {Platform.OS !== "web" && (
-        <View style={styles.searchContainerMobile}>
-          <Search color="#888" size={18} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="SEARCH PARTS..."
-            placeholderTextColor="#666"
+        <View style={styles.mobileSearchWrapper}>
+          <SearchBar
+            selectedBrand={selectedBrand}
+            setSelectedBrand={setSelectedBrand}
+            showBrandDropdown={showBrandDropdown}
+            setShowBrandDropdown={setShowBrandDropdown}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            handleSearchSubmit={handleSearchSubmit}
+            brands={brands}
           />
         </View>
       )}
-
-      {/* Dropdown Modal */}
       <Modal
         visible={isMenuOpen}
         transparent
@@ -153,18 +352,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderColor: "#333",
     paddingHorizontal: 20,
+
+    position: "relative",
+    zIndex: 10,
+    overflow: "visible",
+
+    height: Platform.OS === "web" ? 80 : 140,
     justifyContent: "center",
-    // Increased height for Android to accommodate two rows
-    height: Platform.OS === "web" ? 70 : 120,
-    ...Platform.select({
-      web: { paddingHorizontal: 40 },
-    }),
   },
   topSection: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    width: "100%",
   },
   brandName: {
     fontSize: 22,
@@ -172,35 +371,76 @@ const styles = StyleSheet.create({
     color: "#FFF",
     letterSpacing: 2,
   },
-  // Style for Web (Inline)
-  searchContainer: {
+  subbrandName: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#F2A20C",
+    letterSpacing: 2,
+  },
+
+  webSearchWrapper: {
     flex: 1,
-    maxWidth: 400,
-    height: 40,
-    backgroundColor: "#262626",
+    maxWidth: 600,
+    marginHorizontal: 40,
+
+    zIndex: 20,
+  },
+
+  mobileSearchWrapper: { marginTop: 15, zIndex: 1000 },
+
+  combinedSearchContainer: {
     flexDirection: "row",
+    backgroundColor: "#262626",
+    borderRadius: 6,
+    height: 45,
     alignItems: "center",
-    marginHorizontal: 20,
-    paddingHorizontal: 15,
-    borderRadius: 2,
     borderWidth: 1,
     borderColor: "#444",
+
+    position: "relative",
+    zIndex: 30,
   },
-  // Style for Mobile (Below Brand)
-  searchContainerMobile: {
-    width: "100%",
-    height: 40,
-    backgroundColor: "#262626",
+  brandSelector: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 15,
-    paddingHorizontal: 15,
-    borderRadius: 2,
-    borderWidth: 1,
-    borderColor: "#444",
+    paddingHorizontal: 12,
+    width: 110,
+    justifyContent: "space-between",
   },
-  searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, color: "#FFF", fontSize: 12, fontWeight: "600" },
+  brandSelectorText: { color: "#F2A20C", fontSize: 10, fontWeight: "800" },
+  divider: { width: 1, height: "60%", backgroundColor: "#444" },
+  searchInput: {
+    flex: 1,
+    color: "#FFF",
+    paddingHorizontal: 15,
+    fontSize: 13,
+    fontWeight: "600",
+
+    outlineStyle: "none" as any,
+  },
+  searchIconBtn: { paddingHorizontal: 12 },
+
+  brandDropdown: {
+    position: "absolute",
+    top: 50,
+    left: 0,
+    width: 200,
+    backgroundColor: "#1E1E1E",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#F2A20C",
+
+    // 🔥 FIX layering
+    zIndex: 999,
+    elevation: 20,
+  },
+  brandItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  brandItemText: { color: "#FFF", fontSize: 11, fontWeight: "700" },
+
   iconGroup: { flexDirection: "row", alignItems: "center", gap: 15 },
   iconBtn: { padding: 5 },
   modalOverlay: {
@@ -236,6 +476,62 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   menuText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
+  dropdownOverlay: {
+    position: "absolute",
+    top: 50,
+    left: 0,
+    width: 200,
+    backgroundColor: "#1E1E1E",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#F2A20C",
+    zIndex: 9999,
+    elevation: 20,
+  },
+
+  suggestionBox: {
+    position: "absolute",
+    top: 50,
+    left: 110, // after brand selector
+    right: 0,
+    backgroundColor: "#1E1E1E",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#444",
+    zIndex: 9999,
+  },
+
+  suggestionItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+
+  suggestionText: {
+    color: "#FFF",
+    fontSize: 13,
+  },
+  badgeContainer: {
+    position: "absolute",
+    top: -4,
+    right: -6,
+    backgroundColor: "#ff0000",
+    borderRadius: 10,
+    minWidth: 19,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 2,
+  },
+  badgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "bold",
+    textAlign: "center",
+    padding: 3,
+    paddingHorizontal: 4,
+  },
+  iconButton: { padding: 8, marginHorizontal: 4 },
 });
 
 export default Navbar;

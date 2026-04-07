@@ -8,43 +8,44 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import Navbar from "../Component/navbar";
-import { AuthProvider } from "../Context/authcontext"; //
+import { AuthProvider } from "../Context/authcontext";
+import { NotificationProvider } from "../Context/notificationContext";
 
 function RootLayoutContent() {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.container}>
-      {/* Navbar with notch protection */}
-      <View style={{ paddingTop: insets.top, backgroundColor: "#1A1A1A" }}>
+      <View style={[styles.navbarWrapper, { paddingTop: insets.top }]}>
         <Navbar />
       </View>
 
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: "fade",
-          contentStyle: { backgroundColor: "#1A1A1A" },
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="login" />
-      </Stack>
-      {/* <View style={{ paddingTop: insets.top, backgroundColor: "#1A1A1A" }}>
-        <Footer />
-      </View> */}
+      <View style={styles.content}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: "fade",
+            contentStyle: { backgroundColor: "#1A1A1A" },
+          }}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="login" />
+        </Stack>
+      </View>
+
       <StatusBar style="light" />
     </View>
   );
 }
-
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      {/* 🔐 The AuthProvider MUST be here to wrap the entire app */}
-      <AuthProvider>
-        <RootLayoutContent />
-      </AuthProvider>
+      <NotificationProvider>
+        {/* 🔐 The AuthProvider MUST be here to wrap the entire app */}
+        <AuthProvider>
+          <RootLayoutContent />
+        </AuthProvider>
+      </NotificationProvider>
     </SafeAreaProvider>
   );
 }
@@ -53,5 +54,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#1A1A1A",
+  },
+
+  navbarWrapper: {
+    backgroundColor: "#1A1A1A",
+    zIndex: 1000,
+    elevation: 20,
+  },
+
+  content: {
+    flex: 1,
+    zIndex: 1,
   },
 });
