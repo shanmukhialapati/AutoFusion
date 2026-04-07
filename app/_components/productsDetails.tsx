@@ -1,341 +1,392 @@
+import { categoryApi } from "@/axios/axiosInstance"; // Assuming this is your base axios instance
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
   useWindowDimensions,
+  View,
 } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 import ProductCard from "../../Component/productCard";
-
-type Product = {
-  id: string;
-  name: string;
-  price: string;
-  category: string;
-  status: "Active" | "Low Stock" | "Out of Stock";
-  stock: number;
-  image: string | string[];
-};
-
-const MOCK_PRODUCTS: Product[] = [
-  {
-    id: "1",
-    name: "Alternator Pulley - Mahindra",
-    price: "₹561",
-    category: "Engine",
-    status: "Active",
-    stock: 15,
-    image: "https://images.unsplash.com/photo-1621905252472-e8c0b92d5e7b",
-  },
-  {
-    id: "2",
-    name: "Precision Spark Plug Set",
-    price: "₹1,705",
-    category: "Ignition",
-    status: "Low Stock",
-    stock: 2,
-    image: "https://images.unsplash.com/photo-1581092335878-0c4b1c1f9c2d",
-  },
-  {
-    id: "3",
-    name: "Turbo Charger Assembly",
-    price: "₹14,915",
-    category: "Engine",
-    status: "Out of Stock",
-    stock: 0,
-    image: "https://images.unsplash.com/photo-1486006920555-c77dcf18193c",
-  },
-  {
-    id: "4",
-    name: "Bando Fan Belt",
-    price: "₹850",
-    category: "Engine",
-    status: "Active",
-    stock: 10,
-    image: "https://images.unsplash.com/photo-1486006920555-c77dcf18193c",
-  },
-];
-
-const FILTERS = {
-  brands: ["MAHINDRA", "VALEO", "BANDO", "BMW"],
-  price: ["Under ₹1000", "₹1000 - ₹5000", "Above ₹5000"],
-};
 
 export default function ProductsPage() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1024;
-  const { subCategoryName, parentCategory } = useLocalSearchParams();
+  const params = useLocalSearchParams();
 
-  // --- Filter State ---
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [selectedPrices, setSelectedPrices] = useState<string[]>([]);
+  // Get subCategoryName from URL params
+  const activeCategory = (params.subCategoryName as string) || "";
 
-  // --- Dynamic Filtering Logic ---
-  const filteredProducts = useMemo(() => {
-    return MOCK_PRODUCTS.filter((product) => {
-      const numericPrice = parseInt(product.price.replace(/[₹,]/g, ""));
+  // --- STATES ---
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filtering, setFiltering] = useState(false);
 
-      // Filter by Brand (Case insensitive match for safety)
-      const brandMatch =
-        selectedBrands.length === 0 ||
-        selectedBrands.some((brand) =>
-          product.name.toUpperCase().includes(brand.toUpperCase()),
-        );
+  const [brands, setBrands] = useState<string[]>([]);
+  const [fuelTypes, setFuelTypes] = useState<string[]>([]);
+  const [years, setYears] = useState<number[]>([]);
+  const [models, setModels] = useState<string[]>([]);
 
-      // Filter by Price Range
-      const priceMatch =
-        selectedPrices.length === 0 ||
-        selectedPrices.some((range) => {
-          if (range === "Under ₹1000") return numericPrice < 1000;
-          if (range === "₹1000 - ₹5000")
-            return numericPrice >= 1000 && numericPrice <= 5000;
-          if (range === "Above ₹5000") return numericPrice > 5000;
-          return true;
-        });
+  const [selectedBrand, setSelectedBrand] = useState("");
+  const [selectedFuel, setSelectedFuel] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
 
-      return brandMatch && priceMatch;
-    });
-  }, [selectedBrands, selectedPrices]);
+  // --- API CALL (Unified Fetch using Axios) ---
+  const fetchProducts = useCallback(
+    async (
+      vBrand?: string,
+      vFuel?: string,
+      vYear?: string,
+      vModel?: string,
+    ) => {
+      setFiltering(true);
+      try {
+        let response;
 
-  const toggleFilter = (item: string, type: "brand" | "price") => {
-    if (type === "brand") {
-      setSelectedBrands((prev) =>
-        prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item],
-      );
-    } else {
-      setSelectedPrices((prev) =>
-        prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item],
-      );
+        if (vBrand && vFuel && vYear && vModel) {
+          // Vehicle Specific Filter
+          response = await categoryApi.get("/compatibility/filter/products", {
+            params: {
+              brand: vBrand,
+              fuelType: vFuel,
+              year: vYear,
+              model: vModel,
+              // subCategoryName: activeCategory // Uncomment if backend needs both
+            },
+          });
+        } else {
+          // Initial Category Load
+          response = await categoryApi.get("/products", {
+            params: {
+              subCategoryName: activeCategory,
+              page: 0,
+              size: 20,
+            },
+          });
+        }
+
+        const data = response.data;
+        const finalData = data.content || (Array.isArray(data) ? data : []);
+        setProducts(finalData);
+      } catch (err) {
+        console.error("Product fetch error:", err);
+      } finally {
+        setFiltering(false);
+        setLoading(false);
+      }
+    },
+    [activeCategory],
+  );
+
+  // --- INITIAL LOAD ---
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setLoading(true);
+      try {
+        // Fetch Brands for dropdown using Axios
+        const brandRes = await categoryApi.get("/vehicles/brands");
+        const brandData = brandRes.data;
+        setBrands(brandData?.brands || brandData || []);
+
+        await fetchProducts();
+      } catch (e) {
+        console.error("Initial load error:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (activeCategory) loadInitialData();
+  }, [activeCategory, fetchProducts]);
+
+  // --- HANDLERS (Refactored to Axios) ---
+  const handleBrandSelect = async (brand: string) => {
+    setSelectedBrand(brand);
+    setSelectedFuel("");
+    setSelectedYear("");
+    setSelectedModel("");
+    setFuelTypes([]);
+    setYears([]);
+    setModels([]);
+
+    try {
+      const res = await categoryApi.get("/compatibility/filter/fuel-types", {
+        params: { brand },
+      });
+      setFuelTypes(res.data?.fuelTypes || []);
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  const handleReset = () => {
-    setSelectedBrands([]);
-    setSelectedPrices([]);
+  const handleFuelSelect = async (fuel: string) => {
+    setSelectedFuel(fuel);
+    setSelectedYear("");
+    setSelectedModel("");
+    setYears([]);
+    setModels([]);
+
+    try {
+      const res = await categoryApi.get("/compatibility/filter/years", {
+        params: { brand: selectedBrand, fuelType: fuel },
+      });
+      setYears(res.data?.years || []);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const numColumns = isDesktop ? 3 : 1;
+  const handleYearSelect = async (year: number) => {
+    setSelectedYear(year.toString());
+    setSelectedModel("");
+    setModels([]);
+
+    try {
+      const res = await categoryApi.get("/compatibility/filter/models", {
+        params: { brand: selectedBrand, fuelType: selectedFuel, year },
+      });
+      setModels(res.data?.models || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+  const numCols = isDesktop ? 3 : 2;
+  const handleModelSelect = (model: string) => {
+    setSelectedModel(model);
+    fetchProducts(selectedBrand, selectedFuel, selectedYear, model);
+  };
+
+  const handleReset = () => {
+    setSelectedBrand("");
+    setSelectedFuel("");
+    setSelectedYear("");
+    setSelectedModel("");
+    setFuelTypes([]);
+    setYears([]);
+    setModels([]);
+    fetchProducts();
+  };
+
+  // const handleViewProduct = (product: any) => {
+  //   router.push({
+  //     pathname: "/(shop)/productDetails",
+  //     params: { id: product.id },
+  //   });
+  // };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.iconCircle}
-        >
-          <Ionicons name="chevron-back" size={24} color="#1A1A1A" />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} />
         </TouchableOpacity>
         <View>
-          <Text style={styles.parentText}>
-            {parentCategory || "Collection"}
-          </Text>
-          <Text style={styles.title}>{subCategoryName || "All Parts"}</Text>
+          <Text style={styles.subTitle}>Browsing</Text>
+          <Text style={styles.title}>{activeCategory.toUpperCase()}</Text>
         </View>
       </View>
 
-      <View style={styles.mainLayout}>
-        {/* SIDEBAR FILTERS */}
-        {isDesktop && (
-          <View style={styles.sidebar}>
-            <View style={styles.sidebarHeader}>
-              <Text style={styles.filtersHeading}>Filters</Text>
-              <TouchableOpacity onPress={handleReset}>
-                <Text style={styles.resetText}>RESET</Text>
-              </TouchableOpacity>
+      <View
+        style={[styles.mainLayout, !isDesktop && { flexDirection: "column" }]}
+      >
+        <View style={[styles.sidebar, !isDesktop && styles.mobileSidebar]}>
+          <View style={styles.sidebarHeader}>
+            <Text style={styles.filterTitle}>Vehicle Filter</Text>
+            <TouchableOpacity onPress={handleReset}>
+              <Text style={styles.resetText}>Reset</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            horizontal={!isDesktop}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: isDesktop ? 20 : 0 }}
+          >
+            <View
+              style={{ flexDirection: !isDesktop ? "row" : "column", gap: 15 }}
+            >
+              <FilterStep
+                title="1. Brand"
+                options={brands}
+                selected={selectedBrand}
+                onSelect={handleBrandSelect}
+                enabled
+              />
+              <FilterStep
+                title="2. Fuel"
+                options={fuelTypes}
+                selected={selectedFuel}
+                onSelect={handleFuelSelect}
+                enabled={!!selectedBrand}
+              />
+              <FilterStep
+                title="3. Year"
+                options={years}
+                selected={selectedYear}
+                onSelect={handleYearSelect}
+                enabled={!!selectedFuel}
+              />
+              <FilterStep
+                title="4. Model"
+                options={models}
+                selected={selectedModel}
+                onSelect={handleModelSelect}
+                enabled={!!selectedYear}
+              />
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <FilterGroup
-                title="Brand"
-                options={FILTERS.brands}
-                selected={selectedBrands}
-                onSelect={(val: string) => toggleFilter(val, "brand")}
-              />
-              <FilterGroup
-                title="Price Range"
-                options={FILTERS.price}
-                selected={selectedPrices}
-                onSelect={(val: string) => toggleFilter(val, "price")}
-              />
-            </ScrollView>
-          </View>
-        )}
+          </ScrollView>
+        </View>
 
-        {/* PRODUCT GRID SECTION */}
         <View style={styles.content}>
-          <View style={styles.topControls}>
-            <Text style={styles.resultsCount}>
-              {filteredProducts.length} items found
-            </Text>
-            {!isDesktop && (
-              <TouchableOpacity style={styles.mobileFilterBtn}>
-                <Ionicons name="filter" size={16} color="#333" />
-                <Text style={styles.mobileFilterText}>
-                  Filters ({selectedBrands.length + selectedPrices.length})
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
           <FlatList
-            data={filteredProducts}
-            key={isDesktop ? "desktop" : "mobile"}
-            numColumns={numColumns}
-            keyExtractor={(item) => item.id}
+            data={products}
+            key={`columns-${numCols}`}
+            keyExtractor={(item) => item.id?.toString()}
+            numColumns={isDesktop ? 3 : 2}
             renderItem={({ item }) => (
-              <View
-                style={[styles.cardWrapper, isDesktop && { width: "33.3%" }]}
+              <Animated.View
+                entering={FadeIn}
+                style={{ width: isDesktop ? "33.3%" : "50%", padding: 5 }}
               >
                 <ProductCard
-                  product={item}
-                  onAddToCart={(p) => console.log(p.name)}
-                  onToggleWishlist={(p) => console.log(p.name)}
-                  onView={(p) => console.log(p.name)}
+                  product={{
+                    ...item,
+                    image: item.photoUrl || "",
+                    category:
+                      item.categoryName || item.subCategoryName || "General",
+                    status: item.stock > 0 ? "Active" : "Out of Stock",
+                    price: item.price
+                      ? `₹${parseFloat(item.price).toFixed(2)}`
+                      : "N/A",
+                  }}
+                  onToggleWishlist={() =>
+                    console.log("Wishlist toggle", item.id)
+                  }
+                  // onView={() => handleViewProduct(item)}
+                  onView={() => console.log("view toggle", item.id)}
                 />
-              </View>
+              </Animated.View>
             )}
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="search-outline" size={50} color="#ccc" />
-                <Text style={styles.emptyText}>
-                  No products match your filters.
-                </Text>
-              </View>
+              !loading ? (
+                <View style={styles.emptyContainer}>
+                  <Text>No products found for this selection.</Text>
+                </View>
+              ) : null
             }
-            contentContainerStyle={styles.listContainer}
           />
+
+          {(loading || filtering) && (
+            <View style={styles.overlay}>
+              <ActivityIndicator size="large" color="#F2A20C" />
+              <Text style={{ marginTop: 10, fontWeight: "600" }}>
+                Updating Catalog...
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     </View>
   );
 }
 
-const FilterGroup = ({ title, options, selected, onSelect }: any) => (
-  <View style={styles.filterGroup}>
-    <Text style={styles.filterGroupTitle}>{title}</Text>
-    {options.map((opt: string) => {
-      const isSelected = selected.includes(opt);
-      return (
-        <TouchableOpacity
-          key={opt}
-          style={styles.filterRow}
-          onPress={() => onSelect(opt)}
-        >
-          <View style={[styles.checkbox, isSelected && styles.checkboxActive]}>
-            {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
-          </View>
-          <Text
-            style={[styles.filterText, isSelected && styles.filterTextActive]}
+const FilterStep = ({ title, options, selected, onSelect, enabled }: any) => (
+  <View style={[styles.filterGroup, { opacity: enabled ? 1 : 0.4 }]}>
+    <Text style={styles.stepTitle}>{title}</Text>
+    <View style={styles.chipContainer}>
+      {options?.length > 0 ? (
+        options.map((opt: any) => (
+          <TouchableOpacity
+            key={opt.toString()}
+            disabled={!enabled}
+            // onSelect={() => onSelect(opt)}
+            onPress={() => onSelect(opt)}
+            style={[
+              styles.chip,
+              selected === opt.toString() && styles.activeChip,
+            ]}
           >
-            {opt}
-          </Text>
-        </TouchableOpacity>
-      );
-    })}
+            <Text
+              style={[
+                styles.chipText,
+                selected === opt.toString() && styles.activeChipText,
+              ]}
+            >
+              {opt}
+            </Text>
+          </TouchableOpacity>
+        ))
+      ) : (
+        <Text style={styles.helperText}>
+          {enabled ? "Loading..." : "Select previous"}
+        </Text>
+      )}
+    </View>
   </View>
 );
 
+// Styles kept same as your provided code
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F9FBFC" },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 15,
-    backgroundColor: "#fff",
+    padding: 20,
+    backgroundColor: "#FFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    borderColor: "#EEE",
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#F8FAFC",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 16,
-  },
-  parentText: {
-    fontSize: 10,
-    color: "#F2A20C",
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-  title: { fontSize: 24, fontWeight: "900", color: "#1E293B" },
+  backBtn: { padding: 5, marginRight: 10 },
+  subTitle: { fontSize: 10, color: "#667", fontWeight: "700" },
+  title: { fontSize: 18, fontWeight: "900" },
   mainLayout: { flex: 1, flexDirection: "row" },
   sidebar: {
-    width: 300,
-    backgroundColor: "#fff",
+    width: 280,
+    backgroundColor: "#FFF",
+    padding: 15,
     borderRightWidth: 1,
-    borderRightColor: "#F1F5F9",
-    padding: 24,
+    borderColor: "#EEE",
   },
+  mobileSidebar: { width: "100%", borderRightWidth: 0, borderBottomWidth: 1 },
   sidebarHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 25,
+    marginBottom: 15,
   },
-  filtersHeading: { fontSize: 20, fontWeight: "800", color: "#1E293B" },
-  resetText: { color: "#F2A20C", fontWeight: "700", fontSize: 12 },
-  filterGroup: { marginBottom: 30 },
-  filterGroupTitle: {
-    fontSize: 14,
+  filterTitle: { fontWeight: "800", color: "#334" },
+  resetText: { color: "#F2A20C", fontWeight: "700" },
+  content: { flex: 1, padding: 10 },
+  filterGroup: { marginBottom: 20 },
+  stepTitle: {
+    fontSize: 12,
     fontWeight: "700",
     color: "#64748B",
-    marginBottom: 12,
-    textTransform: "uppercase",
+    marginBottom: 8,
   },
-  filterRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "#E2E8F0",
-    marginRight: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkboxActive: { backgroundColor: "#F2A20C", borderColor: "#F2A20C" },
-  filterText: { fontSize: 15, color: "#1E293B", fontWeight: "500" },
-  filterTextActive: { fontWeight: "700", color: "#000" },
-  content: { flex: 1, paddingHorizontal: 16 },
-  topControls: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 16,
-  },
-  resultsCount: { fontSize: 14, color: "#94A3B8", fontWeight: "600" },
-  mobileFilterBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
+  chipContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  chip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 8,
   },
-  mobileFilterText: { marginLeft: 6, fontWeight: "700", fontSize: 13 },
-  cardWrapper: { padding: 8 },
-  listContainer: { paddingBottom: 100 },
-  emptyContainer: {
-    flex: 1,
-    alignItems: "center",
+  activeChip: { backgroundColor: "#F2A20C" },
+  chipText: { fontSize: 13, color: "#475569", fontWeight: "600" },
+  activeChipText: { color: "#FFF" },
+  helperText: { fontSize: 11, color: "#94A3B8" },
+  emptyContainer: { flex: 1, alignItems: "center", marginTop: 100 },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.7)",
     justifyContent: "center",
-    marginTop: 100,
-  },
-  emptyText: {
-    marginTop: 10,
-    color: "#94A3B8",
-    fontSize: 16,
-    fontWeight: "600",
+    alignItems: "center",
   },
 });

@@ -141,7 +141,7 @@ export default function CategoryDetails() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.push("/")}
             style={styles.iconCircle}
           >
             <Ionicons name="chevron-back" size={24} color="#1A1A1A" />
@@ -214,6 +214,15 @@ export default function CategoryDetails() {
               numColumns={numColumns}
               columnWrapperStyle={subCategories.length > 1 ? styles.row : null}
               contentContainerStyle={styles.listContent}
+              ListEmptyComponent={() => (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="search-outline" size={50} color="#CCC" />
+                  <Text style={styles.emptyTitle}>No Subcategories Found</Text>
+                  <Text style={styles.emptySubtitle}>
+                    We couldn't find any items in this category.
+                  </Text>
+                </View>
+              )}
               renderItem={({ item, index }) => (
                 <GridItem
                   item={item}
@@ -226,6 +235,7 @@ export default function CategoryDetails() {
                         subCategoryId: item.id,
                         subCategoryName: item.name,
                         parentCategory: activeCatName,
+                        parentCategoryId: activeCatId,
                       },
                     });
                   }}
@@ -269,7 +279,7 @@ export default function CategoryDetails() {
                     style={[
                       styles.drawerText,
                       activeCatId === cat.id.toString() && {
-                        color: "#FFD700",
+                        color: "#F2A20C",
                       },
                     ]}
                   >
@@ -333,11 +343,11 @@ const styles = StyleSheet.create({
   },
   sidebarText: { color: "#ADB5BD", fontSize: 15, fontWeight: "500" },
   activeSidebar: { backgroundColor: "rgba(255,215,0,0.1)" },
-  activeSidebarText: { color: "#FFD700", fontWeight: "700" },
+  activeSidebarText: { color: "#F2A20C", fontWeight: "700" },
   activeIndicator: {
     width: 4,
     height: 20,
-    backgroundColor: "#FFD700",
+    backgroundColor: "#F2A20C",
     borderRadius: 2,
   },
 
@@ -409,5 +419,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 50,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#444",
+    marginTop: 10,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: "#888",
+    textAlign: "center",
+    marginTop: 5,
+    paddingHorizontal: 20,
   },
 });

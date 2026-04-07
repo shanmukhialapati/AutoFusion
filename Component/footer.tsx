@@ -125,11 +125,19 @@ const Footer = () => {
           <View style={styles.linksContainer}>
             <View style={styles.linkCol}>
               <Text style={styles.header}>SHOP</Text>
-              {["Home", "Cart", "Wishlist", "Orders"].map((label) => (
+              {["Home", "Cart", "Wishlist", "Address"].map((label) => (
                 <Pressable
                   key={label}
                   style={styles.linkPress}
-                  onPress={() => router.push(`/${label.toLowerCase()}` as any)}
+                  onPress={() => {
+                    if (label === "Home") {
+                      router.push("/");
+                    } else if (label === "Address") {
+                      router.push("/address");
+                    } else {
+                      router.push(`/${label.toLowerCase()}` as any);
+                    }
+                  }}
                 >
                   <Text style={styles.linkText}>{label}</Text>
                 </Pressable>

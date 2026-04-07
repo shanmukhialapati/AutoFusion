@@ -32,187 +32,26 @@ const isWeb = Platform.OS === "web";
 const isMobile = Platform.OS === "ios" || Platform.OS === "android";
 
 interface Product {
-  id: string;
+  id: number; // Changed from string to number per your JSON
   name: string;
-  price: string;
-  category: string;
-  status: "Active" | "Low Stock" | "Out of Stock";
-  stock: number;
-  image: string;
+  description: string;
+  photoUrl: string; // Mapping this to the image display
+  partNumber: string;
+  company: string;
+  actualPrice: number;
+  discount: number;
+  price: number;
+  stockQuantity: number;
+  rating: number | null;
+  categoryName: string;
 }
 
-// const CATEGORIES = [
-//   {
-//     id: "c1",
-//     name: "Engine",
-//     image:
-//       "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c2",
-//     name: "Brake System",
-//     image:
-//       "https://images.unsplash.com/photo-1613214150384-14921ff659b2?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c3",
-//     name: "Suspension and Arms",
-//     image:
-//       "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c4",
-//     name: "Lighting",
-//     image:
-//       "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c5",
-//     name: "Interior and comfort",
-//     image:
-//       "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c6",
-//     name: "Wheels",
-//     image:
-//       "https://images.unsplash.com/photo-1551522435-a13afa10f103?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c7",
-//     name: "Air Conditioning",
-//     image:
-//       "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c8",
-//     name: "Fuel Supply System",
-//     image:
-//       "https://images.unsplash.com/photo-1604147706283-9d7c5c2c8b3e?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c9",
-//     name: "Sensors Relays and Control units",
-//     image:
-//       "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c10",
-//     name: "Oils and Fluids",
-//     image:
-//       "https://images.unsplash.com/photo-1604335399105-a0c585fd81a9?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c11",
-//     name: "Filters",
-//     image:
-//       "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c12",
-//     name: "Exhaust System",
-//     image:
-//       "https://images.unsplash.com/photo-1597007030739-6d2e1b3f9b4f?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c13",
-//     name: "Transmission",
-//     image:
-//       "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c14",
-//     name: "Steering",
-//     image:
-//       "https://images.unsplash.com/photo-1603386329225-868f9b1c6b2f?auto=format&fit=crop&w=800&q=80",
-//   },
-//   {
-//     id: "c15",
-//     name: "Car Accessories",
-//     image:
-//       "https://images.unsplash.com/photo-1625047509168-a7026f36de04?auto=format&fit=crop&w=800&q=80",
-//   },
-// ];
 interface Category {
   id: number;
   name: string;
   photoUrl: string;
   isActive: boolean;
 }
-const PRODUCTS: Product[] = [
-  {
-    id: "1",
-    name: "Brembo Brake Kit",
-    price: "₹45000",
-    category: "Brakes",
-    status: "Active",
-    stock: 12,
-    image: "https://images.unsplash.com/photo-1581092160562-40aa08e78837",
-  },
-  {
-    id: "2",
-    name: "NGK Spark Plug",
-    price: "₹2800",
-    category: "Engine",
-    status: "Low Stock",
-    stock: 5,
-    image: "https://images.unsplash.com/photo-1621905235212-3204968858a7",
-  },
-  {
-    id: "3",
-    name: "Alloy Wheels",
-    price: "₹12000",
-    category: "Wheels",
-    status: "Active",
-    stock: 20,
-    image: "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2",
-  },
-  {
-    id: "4",
-    name: "LED Headlights",
-    price: "₹3500",
-    category: "Lights",
-    status: "Out of Stock",
-    stock: 0,
-    image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70",
-  },
-  {
-    id: "1",
-    name: "Brembo Brake Kit",
-    price: "₹45000",
-    category: "Brakes",
-    status: "Active",
-    stock: 12,
-    image: "https://images.unsplash.com/photo-1581092160562-40aa08e78837",
-  },
-  {
-    id: "2",
-    name: "NGK Spark Plug",
-    price: "₹2800",
-    category: "Engine",
-    status: "Low Stock",
-    stock: 5,
-    image: "https://images.unsplash.com/photo-1621905235212-3204968858a7",
-  },
-  {
-    id: "3",
-    name: "Alloy Wheels",
-    price: "₹12000",
-    category: "Wheels",
-    status: "Active",
-    stock: 20,
-    image: "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2",
-  },
-  {
-    id: "4",
-    name: "LED Headlights",
-    price: "₹3500",
-    category: "Lights",
-    status: "Out of Stock",
-    stock: 0,
-    image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70",
-  },
-];
 
 export default function HomePage() {
   const router = useRouter();
@@ -220,13 +59,16 @@ export default function HomePage() {
   const categoryRef = useRef<FlatList>(null);
   const productRef = useRef<FlatList>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [productsLoading, setProductsLoading] = useState(true); // Separate loader for products
 
   const categoryX = useRef(0);
   const productX = useRef(0);
   useEffect(() => {
     fetchCategories();
+    fetchProducts();
   }, []);
 
   const fetchCategories = async () => {
@@ -255,6 +97,25 @@ export default function HomePage() {
       setCategories([]);
     } finally {
       setLoading(false);
+    }
+  };
+  const fetchProducts = async () => {
+    try {
+      setProductsLoading(true);
+      // API call with pagination params
+      const response = await categoryApi.get("/products", {
+        params: { page: 0, size: 20, sort: "createdAt,desc" },
+      });
+
+      // Accessing the 'content' array from your JSON response
+      if (response.data && response.data.content) {
+        setProducts(response.data.content);
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setProducts([]);
+    } finally {
+      setProductsLoading(false);
     }
   };
   const headerTranslate = scrollY.interpolate({
@@ -298,9 +159,8 @@ export default function HomePage() {
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
       >
-        {/* Hero Section */}
         <View style={{ height: BANNER_HEIGHT, overflow: "hidden" }}>
-          <Animated.Image
+          <Image
             source={{
               uri: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7",
             }}
@@ -316,7 +176,6 @@ export default function HomePage() {
         </View>
 
         <View style={styles.contentBody}>
-          {/* Categories Section */}
           <View style={styles.floatingCard}>
             <View style={styles.sectionHeader}>
               <Text style={styles.heading}>Categories</Text>
@@ -370,7 +229,7 @@ export default function HomePage() {
                         pathname: "/_components/CategoryDetails",
                         params: {
                           categoryName: item.name,
-                          categoryId: item.id.toString(), // PASS THE ID HERE
+                          categoryId: item.id.toString(),
                         },
                       });
                     }}
@@ -394,30 +253,61 @@ export default function HomePage() {
           <View style={styles.featuredSection}>
             <View style={[styles.sectionHeader, { paddingHorizontal: 20 }]}>
               <Text style={styles.heading}>Featured Products</Text>
-              <TouchableOpacity>
+              {/* <TouchableOpacity>
                 <Text style={styles.seeAll}>See All</Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
-            <FlatList
-              ref={productRef}
-              data={PRODUCTS}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingLeft: 20, paddingRight: 10 }}
-              onScroll={(e) => {
-                productX.current = e.nativeEvent.contentOffset.x;
-              }}
-              renderItem={({ item }) => (
-                <View style={{ width: PRODUCT_WIDTH, marginRight: 15 }}>
-                  <ProductCard
-                    product={item}
-                    onAddToCart={() => {}}
-                    onToggleWishlist={() => {}}
-                    onView={() => {}}
-                  />
-                </View>
-              )}
-            />
+            {productsLoading ? (
+              <ActivityIndicator color="#590080" style={{ padding: 40 }} />
+            ) : products.length === 0 ? (
+              <View style={{ padding: 40, alignItems: "center" }}>
+                <Text style={{ color: "#94A3B8" }}>No products available</Text>
+              </View>
+            ) : (
+              <FlatList
+                ref={productRef}
+                data={products} // Use backend data here
+                keyExtractor={(item) => item.id.toString()}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingLeft: 20, paddingRight: 10 }}
+                onScroll={(e) => {
+                  productX.current = e.nativeEvent.contentOffset.x;
+                }}
+                renderItem={({ item }) => (
+                  <View style={{ width: PRODUCT_WIDTH, marginRight: 15 }}>
+                    <ProductCard
+                      product={{
+                        id: item.id.toString(),
+                        name: item.name || "Unknown Product",
+                        // Check if price exists before calling toLocaleString
+                        price:
+                          item.price != null
+                            ? `₹${item.price.toLocaleString()}`
+                            : "Price N/A",
+                        category: item.categoryName || "General",
+                        image: item.photoUrl,
+                        status:
+                          item.stockQuantity > 10
+                            ? "Active"
+                            : item.stockQuantity > 0
+                              ? "Low Stock"
+                              : "Out of Stock",
+                        stock: item.stockQuantity || 0,
+                      }}
+                      onAddToCart={() => {}}
+                      onToggleWishlist={() => {}}
+                      onView={() =>
+                        router.push({
+                          pathname: "./_components/ViewProductDetails",
+                          params: { id: item.id },
+                        })
+                      }
+                    />
+                  </View>
+                )}
+              />
+            )}
           </View>
         </View>
 
@@ -546,7 +436,7 @@ const styles = StyleSheet.create({
     padding: 30,
   },
   tagline: {
-    color: "#FFD700",
+    color: "#F2A20C",
     fontWeight: "700",
     letterSpacing: 2,
     fontSize: 12,
