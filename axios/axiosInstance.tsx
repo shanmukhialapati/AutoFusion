@@ -4,6 +4,7 @@ import axios from "axios";
 const BASE_URL = "http://192.168.0.223:8080/api";
 const CATEGORY_BASE_URL = "http://192.168.0.177:8080/api";
 const CART_URL = "http://192.168.0.225:8080/api";
+const ORDER_BASE_URL = "http://192.168.0.225:8080/api";
 
 export const mainApi = axios.create({
   baseURL: BASE_URL,
@@ -20,6 +21,12 @@ export const categoryApi = axios.create({
 });
 export const cartApi = axios.create({
   baseURL: CART_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+export const orderApi = axios.create({
+  baseURL: ORDER_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -54,6 +61,7 @@ const attachToken = (instance: any) => {
 attachToken(mainApi);
 attachToken(categoryApi);
 attachToken(cartApi);
+attachToken(orderApi);
 
 // 🔹 Export default (optional)
 export default mainApi;
