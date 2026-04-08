@@ -76,7 +76,6 @@ const Footer = () => {
 
   return (
     <View style={styles.container}>
-      {/* --- FLOATING INFO PANEL --- */}
       {selectedInfo && (
         <Animated.View
           style={[
@@ -99,10 +98,8 @@ const Footer = () => {
         </Animated.View>
       )}
 
-      {/* Main Footer Content */}
       <View style={styles.contentPadding}>
         <View style={styles.mainGrid}>
-          {/* Brand Section */}
           <View style={styles.brandSection}>
             <Text style={styles.brandName}>AUTOFUSION</Text>
             <Text style={styles.brandTagline}>
@@ -121,7 +118,6 @@ const Footer = () => {
             </View>
           </View>
 
-          {/* Links Grid */}
           <View style={styles.linksContainer}>
             <View style={styles.linkCol}>
               <Text style={styles.header}>SHOP</Text>
@@ -160,7 +156,6 @@ const Footer = () => {
         </View>
       </View>
 
-      {/* Download Bar */}
       <View style={styles.downloadBar}>
         <Text style={styles.downloadHeading}>SYNC WITH YOUR GARAGE</Text>
         <View style={styles.btnGroup}>
@@ -185,7 +180,6 @@ const Footer = () => {
         </View>
       </View>
 
-      {/* Bottom Status */}
       <View style={styles.bottomStatus}>
         <Text style={styles.copyText}>© 2026 AUTOFUSION INDUSTRIES</Text>
         <View style={styles.badge}>
@@ -211,7 +205,7 @@ const styles = StyleSheet.create({
     right: isMobile ? 10 : 24,
     marginBottom: 15,
     zIndex: 999,
-    backgroundColor: "#F2A20C",
+    backgroundColor: "#f6c873",
     borderRadius: 12,
     ...Platform.select({
       ios: {

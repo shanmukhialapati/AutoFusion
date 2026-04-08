@@ -143,7 +143,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const [historyRes, countRes] = await Promise.all([
         mainApi.get(`${BASE_URL}/notifications`, {
-          params: { page: page, size: 10 },
+          params: { page: page, size: 5 },
           headers: { Authorization: `Bearer ${storedToken}` },
         }),
         mainApi.get(`${BASE_URL}/notifications/unread-count`, {
@@ -202,7 +202,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
   const deleteAllNotifications = async () => {
     try {
-      // DELETE http://192.168.0.223:8081/api/notifications/delete-all
       await mainApi.delete(`${BASE_URL}/notifications/delete-all`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -242,10 +241,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("FCM Token:", fcmToken);
 
       await mainApi.post(
-        `${BASE_URL}/notificaations/register`,
+        `${BASE_URL}/notifications/register`,
         {
           deviceToken: fcmToken,
-          platform: Platform.OS.toUpperCase(),
+          deviceType: "ANDROID",
         },
         {
           headers: {

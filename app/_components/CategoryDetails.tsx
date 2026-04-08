@@ -16,7 +16,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-/* ================== GRID ITEM COMPONENT ================== */
+
 const GridItem = ({ item, index, isDesktop, onPress }: any) => {
   const scale = useRef(new Animated.Value(0.9)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -64,7 +64,6 @@ const GridItem = ({ item, index, isDesktop, onPress }: any) => {
   );
 };
 
-/* ================== MAIN COMPONENT ================== */
 export default function CategoryDetails() {
   const router = useRouter();
   const { categoryId, categoryName } = useLocalSearchParams();
@@ -73,9 +72,8 @@ export default function CategoryDetails() {
   const isDesktop = width >= 1024;
   const isMobile = width < 768;
 
-  // --- States ---
-  const [categories, setCategories] = useState<any[]>([]); // For Sidebar
-  const [subCategories, setSubCategories] = useState<any[]>([]); // For Grid
+  const [categories, setCategories] = useState<any[]>([]);
+  const [subCategories, setSubCategories] = useState<any[]>([]);
   const [activeCatId, setActiveCatId] = useState<string>(categoryId as string);
   const [activeCatName, setActiveCatName] = useState<string>(
     categoryName as string,
@@ -85,12 +83,10 @@ export default function CategoryDetails() {
 
   const numColumns = isDesktop ? 4 : isMobile ? 2 : 3;
 
-  // 1. Initial Load: Fetch all categories for sidebar
   useEffect(() => {
     fetchAllCategories();
   }, []);
 
-  // 2. Fetch Subcategories whenever activeCatId changes
   useEffect(() => {
     if (activeCatId) {
       fetchSubCategories();
@@ -99,10 +95,9 @@ export default function CategoryDetails() {
 
   const fetchAllCategories = async () => {
     try {
-      const response = await categoryApi.get("/categories"); // Adjust endpoint as needed
+      const response = await categoryApi.get("/categories");
       setCategories(response.data);
 
-      // If no categoryId was passed via params, default to the first one in the list
       if (!activeCatId && response.data.length > 0) {
         setActiveCatId(response.data[0].id.toString());
         setActiveCatName(response.data[0].name);
@@ -136,8 +131,6 @@ export default function CategoryDetails() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity
@@ -163,11 +156,13 @@ export default function CategoryDetails() {
       </View>
 
       <View style={styles.mainLayout}>
-        {/* Sidebar (Desktop) */}
         {isDesktop && (
           <View style={styles.sidebar}>
             <Text style={styles.sidebarHeader}>CATEGORIES</Text>
-            <ScrollView>
+            <ScrollView
+              showsVerticalScrollIndicator={false} // <-- Added this
+              showsHorizontalScrollIndicator={false}
+            >
               {categories.map((cat) => (
                 <TouchableOpacity
                   key={cat.id}
@@ -198,7 +193,6 @@ export default function CategoryDetails() {
           </View>
         )}
 
-        {/* Main Content Grid */}
         <View
           style={[styles.content, isDesktop && { borderTopLeftRadius: 30 }]}
         >
@@ -246,7 +240,6 @@ export default function CategoryDetails() {
         </View>
       </View>
 
-      {/* Drawer Overlay (Mobile) */}
       {showDrawer && (
         <View style={styles.drawerOverlay}>
           <Pressable
@@ -260,7 +253,7 @@ export default function CategoryDetails() {
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
             </View>
-            <ScrollView>
+            <ScrollView showsVerticalScrollIndicator={false}>
               {categories.map((cat) => (
                 <TouchableOpacity
                   key={cat.id}
@@ -400,7 +393,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1A1A1A",
     height: "100%",
     position: "absolute",
-    right: 0,
+    left: 0,
   },
   drawerHeader: {
     flexDirection: "row",

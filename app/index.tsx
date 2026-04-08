@@ -77,8 +77,6 @@ export default function HomePage() {
 
       const response = await categoryApi.get("/categories");
 
-      console.log("API DATA:", response.data);
-
       if (!Array.isArray(response.data)) {
         setCategories([]);
         return;
@@ -102,12 +100,11 @@ export default function HomePage() {
   const fetchProducts = async () => {
     try {
       setProductsLoading(true);
-      // API call with pagination params
+
       const response = await categoryApi.get("/products", {
         params: { page: 0, size: 20, sort: "createdAt,desc" },
       });
 
-      // Accessing the 'content' array from your JSON response
       if (response.data && response.data.content) {
         setProducts(response.data.content);
       }
@@ -166,7 +163,7 @@ export default function HomePage() {
             }}
             style={[
               styles.heroImage,
-              { transform: [{ translateY: headerTranslate }] },
+              { transform: [{ translateY: 0 }] }, // Just the number},
             ]}
           />
           <Animated.View style={[styles.overlay, { opacity: headerOpacity }]}>
@@ -464,12 +461,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 20,
   },
   heading: { fontSize: 22, fontWeight: "800", color: "#1A1A1A" },
   arrowRow: { flexDirection: "row", gap: 8 },
   arrow: { backgroundColor: "#F0F2F5", padding: 8, borderRadius: 10 },
-  catCard: { width: 85, alignItems: "center", marginRight: 15 },
+  catCard: { width: 85, alignItems: "center", marginRight: 15, margin: 2 },
   catImgWrapper: {
     width: 70,
     height: 70,

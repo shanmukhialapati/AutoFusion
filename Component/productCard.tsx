@@ -1,8 +1,8 @@
-import { cartApi } from "@/axios/axiosInstance";
+import { cartApi, wishlistApi } from "@/axios/axiosInstance";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -11,6 +11,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import PremiumAlert from "../app/_components/PremiumAlert";
 
@@ -51,7 +52,13 @@ const ProductCard: React.FC<Props> = ({
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [quantity, setQuantity] = useState(0);
   const [loading, setLoading] = useState(false);
-
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+  const isAndroid = Platform.OS === "android";
+  const cardBorderRadius = isAndroid ? 16 : 24;
+  const imageHeight = isMobile ? (isAndroid ? 120 : 140) : 180;
+  const titleSize = isMobile ? (isAndroid ? 13 : 14) : 18;
+  const priceSize = isMobile ? (isAndroid ? 13 : 14) : 16;
   const isOutOfStock = product.status === "Out of Stock";
 
   const [alertConfig, setAlertConfig] = useState<{
@@ -69,6 +76,32 @@ const ProductCard: React.FC<Props> = ({
   const showAlert = (type: AlertType, title: string, message: string) => {
     setAlertConfig({ visible: true, type, title, message });
   };
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) return;
+
+        const res = await wishlistApi.get("/wishlist", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const wishlistItems = res.data?.items || [];
+
+        const exists = wishlistItems.some(
+          (item: any) => item.productId?.toString() === product.id.toString(),
+        );
+
+        setIsWishlisted(exists);
+      } catch (err) {
+        console.log("Wishlist fetch error:", err);
+      }
+    };
+
+    checkWishlistStatus();
+  }, [product.id]);
 
   const updateCartAPI = async (newQty: number) => {
     if (newQty < 0) return;
@@ -109,17 +142,71 @@ const ProductCard: React.FC<Props> = ({
         "error",
         "Error",
         error.response?.data?.message || "Connection failed.",
+        // "Connection failed.",
       );
     } finally {
       setLoading(false);
     }
   };
+  const handleWishlistToggle = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
 
+      if (!token) {
+        showAlert(
+          "warning",
+          "Login Required",
+          "Please log in to manage wishlist.",
+        );
+        return;
+      }
+
+      if (!isWishlisted) {
+        await wishlistApi.post(`/wishlist/${product.id}`, null, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        setIsWishlisted(true);
+
+        showAlert(
+          "success",
+          "Wishlist Updated",
+          `${product.name} added to wishlist.`,
+        );
+      } else {
+        await wishlistApi.delete(`/wishlist/${product.id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        setIsWishlisted(false);
+
+        showAlert(
+          "warning",
+          "Wishlist Updated",
+          `${product.name} removed from wishlist.`,
+        );
+      }
+
+      onToggleWishlist?.(product);
+    } catch (error: any) {
+      console.log("Wishlist Error:", error?.response?.data || error);
+
+      showAlert(
+        "error",
+        "Wishlist Error",
+        error?.response?.data?.message || "Failed to update wishlist.",
+      );
+    }
+  };
   const handlePress = () => {
     if (onView) onView(product);
 
     router.push({
-      pathname: "./ViewProductDetails", // Replace with your actual route path
+      pathname: "/_components/ViewProductDetails",
       params: { id: product.id },
     });
   };
@@ -129,28 +216,51 @@ const ProductCard: React.FC<Props> = ({
     : { uri: product.image };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isMobile && { marginHorizontal: 4 }]}>
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={handlePress}
-        style={styles.card}
+        style={[
+          styles.card,
+          { borderRadius: cardBorderRadius },
+          isAndroid && styles.androidShadow,
+        ]}
       >
-        <View style={styles.imageContainer}>
+        <View
+          style={[
+            styles.imageContainer,
+            {
+              height: imageHeight,
+              borderTopLeftRadius: cardBorderRadius,
+              borderTopRightRadius: cardBorderRadius,
+            },
+          ]}
+        >
           <Image source={imageSource} style={styles.image} />
           <View style={styles.topRow}>
-            {/* <View
-              style={[styles.badge, isOutOfStock && styles.outOfStockBadge]}
+            <View
+              style={[
+                styles.badge,
+                isOutOfStock ? styles.outOfStockBadge : styles.activeBadge,
+                isAndroid && { minWidth: 55, paddingVertical: 2 },
+              ]}
             >
-              <Text style={styles.badgeText}>
-                {isOutOfStock ? "SOLD OUT" : product.category.toUpperCase()}
+              <Text
+                style={[
+                  styles.badgeText,
+                  isOutOfStock ? styles.outOfStockText : styles.activeText,
+                  isAndroid && { fontSize: 7 },
+                ]}
+              >
+                {isOutOfStock ? "OUT OF STOCK" : "Active"}
               </Text>
-            </View> */}
+            </View>
             <TouchableOpacity
-              onPress={() => {
-                setIsWishlisted(!isWishlisted);
-                onToggleWishlist(product);
-              }}
-              style={styles.wishlistBtn}
+              onPress={handleWishlistToggle}
+              style={[
+                styles.wishlistBtn,
+                isAndroid && { width: 28, height: 28 },
+              ]}
             >
               <Ionicons
                 name={isWishlisted ? "heart" : "heart-outline"}
@@ -159,12 +269,17 @@ const ProductCard: React.FC<Props> = ({
               />
             </TouchableOpacity>
           </View>
-          <View style={styles.priceTag}>
+          <View
+            style={[
+              styles.priceTag,
+              isAndroid && { paddingHorizontal: 6, borderTopRightRadius: 12 },
+            ]}
+          >
             <Text style={styles.priceText}>{product.price}</Text>
           </View>
         </View>
 
-        <View style={styles.content}>
+        <View style={[styles.content, isAndroid && { padding: 8 }]}>
           <View style={styles.ratingRow}>
             <Ionicons name="star" size={12} color="#FFD700" />
             <Text style={styles.ratingText}>4.9 (120+ Reviews)</Text>
@@ -172,8 +287,9 @@ const ProductCard: React.FC<Props> = ({
           <Text style={styles.name} numberOfLines={1}>
             {product.name}
           </Text>
-          <Text style={styles.badgeText}>
-            {isOutOfStock ? "SOLD OUT" : product.category.toUpperCase()}
+          <Text style={styles.catText}>
+            {/* {isOutOfStock ? "SOLD OUT" : product.category.toUpperCase()} */}
+            {product.category.toUpperCase()}
           </Text>
           <View style={styles.footer}>
             <View style={styles.stockInfo}>
@@ -225,7 +341,6 @@ const ProductCard: React.FC<Props> = ({
   );
 };
 
-// ... Styles remain the same (excluding Modal specific styles)
 const styles = StyleSheet.create({
   container: { flex: 1 },
   card: {
@@ -259,25 +374,25 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
   },
-  badge: {
-    width: 80,
-    height: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(221, 219, 219, 0.9)",
-    paddingHorizontal: 10,
-    paddingVertical: 1,
-    borderRadius: 12,
-  },
-  outOfStockBadge: { backgroundColor: "#FCA5A5" },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#8b8b8b",
-    paddingTop: 10,
-  },
+  // badge: {
+  //   width: 80,
+  //   height: 24,
+  //   justifyContent: "center",
+  //   alignItems: "center",
+  //   backgroundColor: "rgba(221, 219, 219, 0.9)",
+  //   paddingHorizontal: 10,
+  //   paddingVertical: 1,
+  //   borderRadius: 12,
+  // },
+  // outOfStockBadge: { backgroundColor: "#FCA5A5" },
+  // badgeText: {
+  //   fontSize: 10,
+  //   fontWeight: "700",
+  //   color: "#8b8b8b",
+  //   paddingTop: 10,
+  // },
   wishlistBtn: {
     backgroundColor: "#fff",
     width: 36,
@@ -321,7 +436,7 @@ const styles = StyleSheet.create({
   },
   stockInfo: { flex: 1 },
   stockLabel: { fontSize: 9, fontWeight: "800", color: "#94A3B8" },
-  stockValue: { fontSize: 13, fontWeight: "700", color: "#22C55E" },
+  // stockValue: { fontSize: 13, fontWeight: "700", color: "#22C55E" },
   cartBtn: {
     backgroundColor: "#F2A20C",
     flexDirection: "row",
@@ -353,6 +468,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   loaderContainer: { width: 80, alignItems: "center" },
+  badge: {
+    // paddingHorizontal: 5,
+    // paddingVertical: 2,
+
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    minWidth: 85,
+  },
+
+  activeBadge: {
+    backgroundColor: "#DCFCE7",
+  },
+  outOfStockBadge: {
+    backgroundColor: "#FEE2E2",
+  },
+
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    color: "#918f8f",
+    // paddingTop: 10,
+  },
+  catText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    color: "#918f8f",
+    paddingTop: 10,
+  },
+  activeText: {
+    color: "#166534",
+  },
+  outOfStockText: {
+    color: "#991B1B",
+  },
+
+  stockValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#22C55E",
+  },
+  androidShadow: {
+    elevation: 2,
+  },
 });
 
 export default ProductCard;

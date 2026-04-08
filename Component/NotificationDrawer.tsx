@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { BellOff, Star, Trash2, X } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Modal,
@@ -64,18 +65,14 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
       });
     }
   }, [isOpen]);
+
   const filteredData = useMemo(() => {
-    switch (activeFilter) {
-      case "Unread":
-        return notifications.filter((n) => !n.read);
-      case "Read":
-        return notifications.filter((n) => n.read);
-      case "Favourites":
-        return notifications.filter((n) => n.starred); // Filters based on starred: true
-      case "All":
-      default:
-        return notifications;
-    }
+    if (activeFilter === "All") return notifications;
+    if (activeFilter === "Unread") return notifications.filter((n) => !n.read);
+    if (activeFilter === "Read") return notifications.filter((n) => n.read);
+    if (activeFilter === "Favourites")
+      return notifications.filter((n) => n.starred);
+    return notifications;
   }, [notifications, activeFilter]);
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -233,90 +230,118 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                 <Text style={styles.emptyText}>No notifications Found!</Text>
               </View>
             ) : (
-              filteredData.map((item) => (
-                <View
-                  key={item.id}
-                  style={[
-                    styles.notificationCard,
-                    !item.read && styles.unreadCard,
-                  ]}
-                >
-                  {!item.read && <View style={styles.unreadStripe} />}
-
-                  <TouchableOpacity
-                    style={styles.notifTextContainer}
-                    onPress={() => handleNotificationPress(item)}
+              <>
+                {filteredData.map((item) => (
+                  <View
+                    key={item.id}
+                    style={[
+                      styles.notificationCard,
+                      !item.read && styles.unreadCard,
+                    ]}
                   >
-                    <View style={styles.headerRow}>
-                      <Text
-                        style={[
-                          styles.notifTitle,
-                          !item.read && styles.boldText,
-                        ]}
-                      >
-                        {item.title}
-                      </Text>
-                      <Text style={styles.notifTime}>
-                        {getDuration(
-                          item.createdAt || new Date().toISOString(),
-                        )}
-                      </Text>
-                    </View>
-                    <Text style={styles.notifDesc} numberOfLines={2}>
-                      {item.message}
-                    </Text>
-                  </TouchableOpacity>
+                    {!item.read && <View style={styles.unreadStripe} />}
 
-                  <View style={styles.footerRow}>
-                    <View
-                      style={[
-                        styles.severityBadge,
-                        {
-                          backgroundColor:
-                            item.severity === "WARNING" ? "#FFFBEB" : "#F0FDF4",
-                        },
-                      ]}
+                    <TouchableOpacity
+                      style={styles.notifTextContainer}
+                      onPress={() => handleNotificationPress(item)}
                     >
+                      <View style={styles.headerRow}>
+                        <Text
+                          style={[
+                            styles.notifTitle,
+                            !item.read && styles.boldText,
+                          ]}
+                        >
+                          {item.title}
+                        </Text>
+                        <Text style={styles.notifTime}>
+                          {getDuration(
+                            item.createdAt || new Date().toISOString(),
+                          )}
+                        </Text>
+                      </View>
+                      <View style={styles.footerRow}>
+                        <Text style={styles.notifDesc} numberOfLines={2}>
+                          {item.message}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => toggleStar(item.id, !item.starred)}
+                          style={styles.starBtn}
+                        >
+                          <Star
+                            size={18}
+                            color={item.starred ? "#F2A20C" : "#CBD5E1"}
+                            fill={item.starred ? "#F2A20C" : "transparent"}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+
+                    {/* <View style={styles.footerRow}>
                       <View
                         style={[
-                          styles.severityDot,
+                          styles.severityBadge,
                           {
                             backgroundColor:
                               item.severity === "WARNING"
-                                ? "#F2A20C"
-                                : "#22C55E",
-                          },
-                        ]}
-                      />
-                      <Text
-                        style={[
-                          styles.severityText,
-                          {
-                            color:
-                              item.severity === "WARNING"
-                                ? "#B45309"
-                                : "#166534",
+                                ? "#FFFBEB"
+                                : "#F0FDF4",
                           },
                         ]}
                       >
-                        {item.severity}
-                      </Text>
-                    </View>
+                        <View
+                          style={[
+                            styles.severityDot,
+                            {
+                              backgroundColor:
+                                item.severity === "WARNING"
+                                  ? "#F2A20C"
+                                  : "#22C55E",
+                            },
+                          ]}
+                        />
+                       <Text
+                          style={[
+                            styles.severityText,
+                            {
+                              color:
+                                item.severity === "WARNING"
+                                  ? "#B45309"
+                                  : "#166534",
+                            },
+                          ]}
+                        >
+                          {item.severity}
+                        </Text> 
+                      </View>
 
-                    {/* STAR / FAVOURITE BUTTON */}
-                    <TouchableOpacity
-                      onPress={() => toggleStar(item.id, !item.starred)}
-                      style={styles.starBtn}
-                    >
-                      <Star
-                        size={18}
-                        color={item.starred ? "#F2A20C" : "#CBD5E1"}
-                        fill={item.starred ? "#F2A20C" : "transparent"}
-                      />
-                    </TouchableOpacity>
+                     
+                      <TouchableOpacity
+                        onPress={() => toggleStar(item.id, !item.starred)}
+                        style={styles.starBtn}
+                      >
+                        <Star
+                          size={18}
+                          color={item.starred ? "#F2A20C" : "#CBD5E1"}
+                          fill={item.starred ? "#F2A20C" : "transparent"}
+                        />
+                      </TouchableOpacity>
+                    </View> */}
                   </View>
-                </View>
-              ))
+                ))}
+
+                {isLoadingNotifs && (
+                  <View style={styles.loaderFooter}>
+                    <ActivityIndicator size="small" color="#0666c6" />
+                  </View>
+                )}
+
+                {isLastNotifPage && filteredData.length > 0 && (
+                  <Text style={styles.endOfListText}>
+                    No more notifications
+                  </Text>
+                )}
+              </>
             )}
           </ScrollView>
         </Animated.View>
@@ -338,7 +363,8 @@ const styles = StyleSheet.create({
     right: 0,
     ...Platform.select({
       web: { width: 450, boxShadow: "-10px 0 30px rgba(0,0,0,0.1)" },
-      default: { width: "85%" },
+      android: { width: "95%" },
+      default: { width: "100%" },
     }),
     paddingTop: Platform.OS === "web" ? 20 : 50,
   },
@@ -420,7 +446,7 @@ const styles = StyleSheet.create({
   // },
   unreadCard: {
     borderColor: "#F2A20C",
-    backgroundColor: "#f2a20c21",
+    backgroundColor: "#fae6c230",
     shadowOpacity: 0.1,
   },
   unreadStripe: {
@@ -428,10 +454,10 @@ const styles = StyleSheet.create({
     left: 0,
     top: 16,
     bottom: 16,
-    width: 4,
+    width: 5,
     backgroundColor: "#F2A20C",
-    borderTopRightRadius: 4,
-    borderBottomRightRadius: 4,
+    borderTopRightRadius: 3,
+    borderBottomRightRadius: 3,
   },
   notifTextContainer: { flex: 1 },
   headerRow: {
@@ -529,6 +555,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#F1F5F9",
     position: "relative",
+  },
+  loaderFooter: {
+    paddingVertical: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  endOfListText: {
+    textAlign: "center",
+    color: "#999",
+    fontSize: 12,
+    paddingVertical: 15,
+    fontStyle: "italic",
   },
 });
 

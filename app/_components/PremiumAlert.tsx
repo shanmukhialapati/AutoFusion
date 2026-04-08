@@ -72,7 +72,6 @@ const PremiumAlert: React.FC<Props> = ({
   return (
     <Modal visible={visible} transparent animationType="none">
       <View style={styles.overlay}>
-        {/* Backdrop */}
         <Animated.View
           entering={FadeIn}
           exiting={FadeOut}
@@ -81,18 +80,15 @@ const PremiumAlert: React.FC<Props> = ({
           <Pressable style={styles.backdrop} onPress={onClose} />
         </Animated.View>
 
-        {/* Alert Container */}
         <Animated.View
           entering={FadeIn.duration(300)}
           exiting={FadeOut.duration(200)}
           style={styles.alertBox}
         >
-          {/* Close Button */}
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Ionicons name="close" size={22} color="#94a3b8" />
           </TouchableOpacity>
 
-          {/* Icon Section */}
           <View style={styles.iconContainer}>
             <View />
             <View
@@ -109,7 +105,6 @@ const PremiumAlert: React.FC<Props> = ({
             </View>
           </View>
 
-          {/* Text Content */}
           <View style={styles.textSection}>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.message}>{message}</Text>
@@ -117,7 +112,6 @@ const PremiumAlert: React.FC<Props> = ({
 
           <View style={styles.divider} />
 
-          {/* Confirm Button */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={onConfirm || onClose}

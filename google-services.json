@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "372319741175",
+    "project_id": "spacezant-notifications",
+    "storage_bucket": "spacezant-notifications.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:372319741175:android:c61304b8a3416f1b631ff2",
+        "android_client_info": {
+          "package_name": "com.automobile.ecom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1WGSPDR-qzJZ-gAdfrVM5jrnITICWus0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

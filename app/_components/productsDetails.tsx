@@ -19,12 +19,11 @@ export default function ProductsPage() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1024;
+  const isMobile = width < 768;
   const params = useLocalSearchParams();
 
-  // Get subCategoryName from URL params
   const activeCategory = (params.subCategoryName as string) || "";
 
-  // --- STATES ---
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtering, setFiltering] = useState(false);
@@ -38,8 +37,8 @@ export default function ProductsPage() {
   const [selectedFuel, setSelectedFuel] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
 
-  // --- API CALL (Unified Fetch using Axios) ---
   const fetchProducts = useCallback(
     async (
       vBrand?: string,
@@ -52,18 +51,16 @@ export default function ProductsPage() {
         let response;
 
         if (vBrand && vFuel && vYear && vModel) {
-          // Vehicle Specific Filter
           response = await categoryApi.get("/compatibility/filter/products", {
             params: {
               brand: vBrand,
               fuelType: vFuel,
               year: vYear,
               model: vModel,
-              // subCategoryName: activeCategory // Uncomment if backend needs both
+              // subCategoryName: activeCategory
             },
           });
         } else {
-          // Initial Category Load
           response = await categoryApi.get("/products", {
             params: {
               subCategoryName: activeCategory,
@@ -74,7 +71,9 @@ export default function ProductsPage() {
         }
 
         const data = response.data;
-        const finalData = data.content || (Array.isArray(data) ? data : []);
+        // const finalData = data.content || (Array.isArray(data) ? data : []);
+        const finalData =
+          data.products || data.content || (Array.isArray(data) ? data : []);
         setProducts(finalData);
       } catch (err) {
         console.error("Product fetch error:", err);
@@ -86,12 +85,10 @@ export default function ProductsPage() {
     [activeCategory],
   );
 
-  // --- INITIAL LOAD ---
   useEffect(() => {
     const loadInitialData = async () => {
       setLoading(true);
       try {
-        // Fetch Brands for dropdown using Axios
         const brandRes = await categoryApi.get("/vehicles/brands");
         const brandData = brandRes.data;
         setBrands(brandData?.brands || brandData || []);
@@ -107,7 +104,6 @@ export default function ProductsPage() {
     if (activeCategory) loadInitialData();
   }, [activeCategory, fetchProducts]);
 
-  // --- HANDLERS (Refactored to Axios) ---
   const handleBrandSelect = async (brand: string) => {
     setSelectedBrand(brand);
     setSelectedFuel("");
@@ -158,7 +154,7 @@ export default function ProductsPage() {
       console.error(e);
     }
   };
-  const numCols = isDesktop ? 3 : 2;
+  const numColumns = isDesktop ? 4 : isMobile ? 1 : 3;
   const handleModelSelect = (model: string) => {
     setSelectedModel(model);
     fetchProducts(selectedBrand, selectedFuel, selectedYear, model);
@@ -175,103 +171,129 @@ export default function ProductsPage() {
     fetchProducts();
   };
 
-  // const handleViewProduct = (product: any) => {
-  //   router.push({
-  //     pathname: "/(shop)/productDetails",
-  //     params: { id: product.id },
-  //   });
-  // };
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} />
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.subTitle}>Browsing</Text>
-          <Text style={styles.title}>{activeCategory.toUpperCase()}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+          >
+            <Ionicons name="chevron-back" size={24} />
+          </TouchableOpacity>
+
+          <View>
+            <Text style={styles.subTitle}>Browsing</Text>
+            <Text style={styles.title}>{activeCategory.toUpperCase()}</Text>
+          </View>
         </View>
+
+        {!isDesktop && (
+          <TouchableOpacity
+            style={styles.filterBtn}
+            onPress={() => setShowFilterDrawer(true)}
+          >
+            <Ionicons name="options-outline" size={22} color="#F2A20C" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View
         style={[styles.mainLayout, !isDesktop && { flexDirection: "column" }]}
       >
-        <View style={[styles.sidebar, !isDesktop && styles.mobileSidebar]}>
-          <View style={styles.sidebarHeader}>
-            <Text style={styles.filterTitle}>Vehicle Filter</Text>
-            <TouchableOpacity onPress={handleReset}>
-              <Text style={styles.resetText}>Reset</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            horizontal={!isDesktop}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: isDesktop ? 20 : 0 }}
-          >
-            <View
-              style={{ flexDirection: !isDesktop ? "row" : "column", gap: 15 }}
-            >
-              <FilterStep
-                title="1. Brand"
-                options={brands}
-                selected={selectedBrand}
-                onSelect={handleBrandSelect}
-                enabled
-              />
-              <FilterStep
-                title="2. Fuel"
-                options={fuelTypes}
-                selected={selectedFuel}
-                onSelect={handleFuelSelect}
-                enabled={!!selectedBrand}
-              />
-              <FilterStep
-                title="3. Year"
-                options={years}
-                selected={selectedYear}
-                onSelect={handleYearSelect}
-                enabled={!!selectedFuel}
-              />
-              <FilterStep
-                title="4. Model"
-                options={models}
-                selected={selectedModel}
-                onSelect={handleModelSelect}
-                enabled={!!selectedYear}
-              />
+        {isDesktop && (
+          <View style={styles.sidebar}>
+            <View style={styles.sidebarHeader}>
+              <Text style={styles.filterTitle}>Vehicle Filter</Text>
+              <TouchableOpacity onPress={handleReset}>
+                <Text style={styles.resetText}>Reset</Text>
+              </TouchableOpacity>
             </View>
-          </ScrollView>
-        </View>
+
+            <ScrollView
+              horizontal={!isDesktop}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: isDesktop ? 20 : 0 }}
+            >
+              <View
+                style={{
+                  flexDirection: !isDesktop ? "row" : "column",
+                  gap: 15,
+                }}
+              >
+                <FilterStep
+                  title="1. Brand"
+                  options={brands}
+                  selected={selectedBrand}
+                  onSelect={handleBrandSelect}
+                  enabled
+                />
+                <FilterStep
+                  title="2. Fuel"
+                  options={fuelTypes}
+                  selected={selectedFuel}
+                  onSelect={handleFuelSelect}
+                  enabled={!!selectedBrand}
+                />
+                <FilterStep
+                  title="3. Year"
+                  options={years}
+                  selected={selectedYear}
+                  onSelect={handleYearSelect}
+                  enabled={!!selectedFuel}
+                />
+                <FilterStep
+                  title="4. Model"
+                  options={models}
+                  selected={selectedModel}
+                  onSelect={handleModelSelect}
+                  enabled={!!selectedYear}
+                />
+              </View>
+            </ScrollView>
+          </View>
+        )}
 
         <View style={styles.content}>
           <FlatList
             data={products}
-            key={`columns-${numCols}`}
+            key={numColumns}
+            numColumns={numColumns}
             keyExtractor={(item) => item.id?.toString()}
-            numColumns={isDesktop ? 3 : 2}
             renderItem={({ item }) => (
               <Animated.View
                 entering={FadeIn}
-                style={{ width: isDesktop ? "33.3%" : "50%", padding: 5 }}
+                style={{ width: isDesktop ? "25%" : "50%", padding: 5 }}
               >
                 <ProductCard
                   product={{
-                    ...item,
-                    image: item.photoUrl || "",
-                    category:
-                      item.categoryName || item.subCategoryName || "General",
-                    status: item.stock > 0 ? "Active" : "Out of Stock",
-                    price: item.price
-                      ? `₹${parseFloat(item.price).toFixed(2)}`
-                      : "N/A",
+                    id: item.id.toString(),
+                    name: item.name || "Unknown Product",
+
+                    price:
+                      item.price != null
+                        ? `₹${item.price.toLocaleString()}`
+                        : "Price N/A",
+                    category: item.categoryName || "General",
+                    image:
+                      item.photoUrl ||
+                      "https://via.placeholder.com/300x200.png?text=No+Image",
+                    status:
+                      item.stockQuantity > 10
+                        ? "Active"
+                        : item.stockQuantity > 0
+                          ? "Low Stock"
+                          : "Out of Stock",
+                    stock: item.stockQuantity || 0,
                   }}
-                  onToggleWishlist={() =>
-                    console.log("Wishlist toggle", item.id)
+                  onAddToCart={() => {}}
+                  onToggleWishlist={() => {}}
+                  onView={() =>
+                    router.push({
+                      pathname: "/_components/ViewProductDetails",
+                      params: { id: item.id },
+                    })
                   }
-                  // onView={() => handleViewProduct(item)}
-                  onView={() => console.log("view toggle", item.id)}
                 />
               </Animated.View>
             )}
@@ -294,6 +316,70 @@ export default function ProductsPage() {
           )}
         </View>
       </View>
+      {showFilterDrawer && !isDesktop && (
+        <View style={styles.drawerOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setShowFilterDrawer(false)}
+          />
+
+          <View style={styles.drawer}>
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerTitle}>Vehicle Filter</Text>
+
+              <TouchableOpacity onPress={() => setShowFilterDrawer(false)}>
+                <Ionicons name="close" size={26} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 15 }}>
+              <View style={styles.sidebarHeader}>
+                <Text style={styles.filterTitle}>Vehicle Filter</Text>
+
+                <TouchableOpacity onPress={handleReset}>
+                  <Text style={styles.resetText}>Reset</Text>
+                </TouchableOpacity>
+              </View>
+
+              <FilterStep
+                title="1. Brand"
+                options={brands}
+                selected={selectedBrand}
+                onSelect={handleBrandSelect}
+                enabled
+              />
+
+              <FilterStep
+                title="2. Fuel"
+                options={fuelTypes}
+                selected={selectedFuel}
+                onSelect={handleFuelSelect}
+                enabled={!!selectedBrand}
+              />
+
+              <FilterStep
+                title="3. Year"
+                options={years}
+                selected={selectedYear}
+                onSelect={handleYearSelect}
+                enabled={!!selectedFuel}
+              />
+
+              <FilterStep
+                title="4. Model"
+                options={models}
+                selected={selectedModel}
+                onSelect={(model: string) => {
+                  handleModelSelect(model);
+                  setShowFilterDrawer(false);
+                }}
+                enabled={!!selectedYear}
+              />
+            </ScrollView>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -326,18 +412,18 @@ const FilterStep = ({ title, options, selected, onSelect, enabled }: any) => (
         ))
       ) : (
         <Text style={styles.helperText}>
-          {enabled ? "Loading..." : "Select previous"}
+          {enabled ? "not found" : "Select previous"}
         </Text>
       )}
     </View>
   </View>
 );
 
-// Styles kept same as your provided code
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   header: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     padding: 20,
     backgroundColor: "#FFF",
@@ -361,14 +447,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 15,
   },
-  filterTitle: { fontWeight: "800", color: "#334" },
+  filterTitle: { fontWeight: "800", color: "rgb(134, 134, 139)" },
   resetText: { color: "#F2A20C", fontWeight: "700" },
   content: { flex: 1, padding: 10 },
   filterGroup: { marginBottom: 20 },
   stepTitle: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#64748B",
+    color: "#8a8e94",
     marginBottom: 8,
   },
   chipContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
@@ -379,14 +465,52 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeChip: { backgroundColor: "#F2A20C" },
-  chipText: { fontSize: 13, color: "#475569", fontWeight: "600" },
+  chipText: { fontSize: 13, color: "#5b6a7e", fontWeight: "600" },
   activeChipText: { color: "#FFF" },
-  helperText: { fontSize: 11, color: "#94A3B8" },
+  helperText: { fontSize: 11, color: "#9399a2" },
   emptyContainer: { flex: 1, alignItems: "center", marginTop: 100 },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(255,255,255,0.7)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  filterBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: "#FFF7E6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  drawerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    zIndex: 999,
+  },
+
+  drawer: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 320,
+    maxWidth: "85%",
+    backgroundColor: "#1A1A1A",
+  },
+
+  drawerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+
+  drawerTitle: {
+    color: "#FFF",
+    fontSize: 18,
+    fontWeight: "800",
   },
 });

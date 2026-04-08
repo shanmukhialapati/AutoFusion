@@ -25,10 +25,11 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import PremiumAlert from "../app/_components/PremiumAlert";
 import { useAuth } from "../Context/authcontext";
 import { useNotifications } from "../Context/notificationContext";
 import NotificationDrawer from "./NotificationDrawer";
-
+type AlertType = "success" | "warning" | "error";
 const SearchBar = React.memo(
   ({
     selectedBrand,
@@ -174,6 +175,21 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
   const [selectedBrand, setSelectedBrand] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: "success",
+    title: "",
+    message: "",
+  });
+
+  const showAlert = (type: AlertType, title: string, message: string) => {
+    setAlertConfig({ visible: true, type, title, message });
+  };
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const handleLogout = async () => {
     await setAuth(null);
@@ -207,7 +223,6 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
   const handleSearchSubmit = (overrideQuery?: string) => {
     // const finalQuery = (overrideQuery || searchQuery).trim();
 
-    // If nothing is selected and query is empty, do nothing
     if (!overrideQuery && !selectedBrand) return;
     router.push({
       pathname: "../app/_components/productsDetails",
@@ -225,7 +240,7 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
     <View style={styles.navContainer}>
       <View style={styles.topSection}>
         <Text style={styles.brandName} onPress={() => router.push("/")}>
-          AUTO<span style={styles.subbrandName}>FUSION</span>
+          AUTO<Text style={styles.subbrandName}>FUSION</Text>
         </Text>
 
         {Platform.OS === "web" && (
@@ -246,7 +261,18 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
         <View style={styles.iconGroup}>
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() => setIsNotifyOpen(true)}
+            onPress={() => {
+              if (!user) {
+                showAlert(
+                  "warning",
+                  "Login Required",
+                  "Please login to view notifications.",
+                );
+                return;
+              }
+
+              setIsNotifyOpen(true);
+            }}
           >
             <Bell color="white" size={24} />
             {unreadCount > 0 && (
@@ -342,6 +368,13 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
           </View>
         </Pressable>
       </Modal>
+      <PremiumAlert
+        visible={alertConfig.visible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 };

@@ -16,7 +16,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { mainApi } from "../axios/axiosInstance"; // Your axios config with interceptors
+import { loginApi } from "../axios/axiosInstance"; // Your axios config with interceptors
 import { useAuth } from "../Context/authcontext";
 
 const LoginPage = () => {
@@ -67,7 +67,7 @@ const LoginPage = () => {
     try {
       if (isLogin) {
         // LOGIN API CALL
-        const response = await mainApi.post("/auth/login", {
+        const response = await loginApi.post("/auth/login", {
           email: email,
           password: password,
         });
@@ -78,7 +78,7 @@ const LoginPage = () => {
         }
       } else {
         // SIGNUP API CALL
-        const response = await mainApi.post("/auth/signup", {
+        const response = await loginApi.post("/auth/signup", {
           username: username,
           email: email,
           password: password,

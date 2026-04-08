@@ -1,4 +1,4 @@
-import { categoryApi } from "@/axios/axiosInstance";
+import { cartApi, categoryApi } from "@/axios/axiosInstance";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -9,31 +9,40 @@ import {
   Dimensions,
   Image,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Product } from "../../Component/productCard";
-
+import PremiumAlert from "./PremiumAlert";
 const { width } = Dimensions.get("window");
-
-const ProductDetails = () => {
+type AlertType = "success" | "warning" | "error";
+export default function ProductDetails() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-
-  const [product, setProduct] = useState<Product | null>(null);
-  const [compatibility, setCompatibility] = useState<any>(null);
-
+  const isWeb = Platform.OS === "web";
+  const [quantity, setQuantity] = useState(0);
+  const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const isOutOfStock =
+    product?.status === "Out of Stock" || product?.stockQuantity <= 0;
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: "success",
+    title: "",
+    message: "",
+  });
 
-  const isWeb = Platform.OS === "web";
-
+  const showAlert = (type: AlertType, title: string, message: string) => {
+    setAlertConfig({ visible: true, type, title, message });
+  };
   const getToken = async () => {
     const token = await AsyncStorage.getItem("token");
     if (!token) {
@@ -42,250 +51,446 @@ const ProductDetails = () => {
     }
     return token;
   };
-
-  const parsePrice = (price: string | number) =>
-    typeof price === "string"
-      ? parseFloat(price.replace(/[^0-9.]/g, ""))
-      : price;
-
-  const fetchAllDetails = useCallback(async () => {
+  const fetchDetails = useCallback(async () => {
     try {
       setLoading(true);
-      const [productRes, compatRes] = await Promise.all([
-        categoryApi.get(`/products/${id}`),
-        categoryApi.get(`/compatibility/${id}`),
-      ]);
-
-      setProduct(productRes.data);
-      setCompatibility(compatRes.data);
-    } catch (error) {
-      console.error("Fetch Error:", error);
-      Alert.alert("Error", "Failed to load product details.");
+      const res = await categoryApi.get(`/products/${id}`);
+      setProduct(res.data);
+    } catch {
+      Alert.alert("Error", "Product not found");
     } finally {
       setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
-    if (id) fetchAllDetails();
-  }, [id, fetchAllDetails]);
-
-  const handleAddToCart = async () => {
-    if (!product) return;
-    const token = await getToken();
-    if (!token) return;
-
-    setAddingToCart(true);
-    try {
-      await categoryApi.post(
-        "/orders/bag/add",
-        {
-          pid: product.id,
-          pname: product.name,
-          price: parsePrice(product.price),
-          quantity: 1,
-        },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      Alert.alert("Success", "Added to your bag!");
-    } catch (error) {
-      Alert.alert("Error", "Could not add to cart.");
-    } finally {
-      setAddingToCart(false);
-    }
-  };
-
-  const toggleWishlist = async () => {
-    if (!product) return;
-    const token = await getToken();
-    if (!token) return;
-
-    setWishlistLoading(true);
-    try {
-      await categoryApi.post(
-        `/wishlist/toggle/${product.id}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      setIsWishlisted((prev) => !prev);
-    } catch (error) {
-      Alert.alert("Error", "Wishlist update failed.");
-    } finally {
-      setWishlistLoading(false);
-    }
-  };
+    if (id) fetchDetails();
+  }, [id, fetchDetails]);
 
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#F2A20C" />
+        <ActivityIndicator size="large" color="#F59E0B" />
       </View>
     );
   }
 
   if (!product) return null;
+  const parsePrice = (price: string | number) =>
+    typeof price === "string"
+      ? parseFloat(price.replace(/[^0-9.]/g, ""))
+      : price;
+  const updateCartAPI = async (newQty: number) => {
+    if (newQty < 0) return;
 
-  const imageSource = Array.isArray(product.image)
-    ? { uri: product.image[0] }
-    : { uri: product.image };
+    setAddingToCart(true);
 
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      if (!token) {
+        showAlert("warning", "Login Required", "Please log in first.");
+        return;
+      }
+
+      const numericPrice = parsePrice(product.price);
+
+      const payload = {
+        pid: product.id,
+        pname: product.name,
+        actualPrice: product.actualPrice || numericPrice,
+        discount: product.discount || 0,
+        price: numericPrice,
+        quantity: newQty,
+      };
+
+      console.log("Posting to cart:", payload);
+
+      const response = await cartApi.post("/orders/bag/add", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if ([200, 201].includes(response.status)) {
+        const previousQty = quantity;
+        setQuantity(newQty);
+
+        if (previousQty === 0 && newQty === 1) {
+          showAlert(
+            "success",
+            "Added to Cart",
+            `${product.name} added to bag!`,
+          );
+        } else if (newQty === 0) {
+          showAlert("warning", "Removed", `${product.name} removed from bag.`);
+        } else if (newQty > previousQty) {
+          showAlert(
+            "success",
+            "Quantity Increased",
+            `${product.name} quantity increased to ${newQty}.`,
+          );
+        } else if (newQty < previousQty) {
+          showAlert(
+            "warning",
+            "Quantity Decreased",
+            `${product.name} quantity decreased to ${newQty}.`,
+          );
+        }
+      }
+    } catch (error: any) {
+      console.log(error?.response?.data || error);
+      showAlert(
+        "error",
+        "Error",
+        error.response?.data?.message || "Connection failed.",
+      );
+    } finally {
+      setAddingToCart(false);
+    }
+  };
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={28} color="#1A1A1A" />
+        <TouchableOpacity
+          style={styles.iconCircle}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={22} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Product Details</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity style={styles.iconCircle}>
+          <Ionicons name="share-social-outline" size={22} color="#0F172A" />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={isWeb ? styles.webWrapper : styles.mobileWrapper}>
-          <Image
-            source={imageSource}
-            style={isWeb ? styles.imageWeb : styles.imageMobile}
-          />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={isWeb ? styles.webLayout : styles.mobileLayout}>
+          <View>
+            <View
+              style={
+                isWeb ? styles.imageContainerWeb : styles.imageContainerMobile
+              }
+            >
+              <Image
+                source={{ uri: product.photoUrl }}
+                style={styles.mainImage}
+              />
+            </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Customer Reviews</Text>
 
-          <View style={[styles.content, isWeb && styles.contentWeb]}>
-            <View style={styles.row}>
-              <Text style={styles.category}>{product.category}</Text>
-              <View style={styles.rating}>
-                <Ionicons name="star" size={16} color="#FFD700" />
-                <Text style={styles.ratingText}>4.9</Text>
+              {[1, 2, 3].map((item) => (
+                <View key={item} style={styles.reviewCard}>
+                  <View style={styles.reviewHeader}>
+                    <Text style={styles.reviewerName}>User {item}</Text>
+                    <Text style={styles.reviewRating}>★★★★★</Text>
+                  </View>
+                  <Text style={styles.reviewText}>
+                    Excellent product quality, perfect fit and delivery was
+                    fast. Highly recommended for automobile enthusiasts.
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+          <View
+            style={
+              isWeb ? styles.detailsContainerWeb : styles.detailsContainerMobile
+            }
+          >
+            <Text style={styles.categoryLabel}>
+              {product.categoryName} • {product.subCategoryName}
+            </Text>
+            <Text style={styles.title}>{product.name}</Text>
+
+            <View style={styles.specGrid}>
+              <View style={styles.specCard}>
+                <Text style={styles.specTitle}>Brand</Text>
+                <Text style={styles.specValue}>{product.company}</Text>
+              </View>
+              <View style={styles.specCard}>
+                <Text style={styles.specTitle}>Part No</Text>
+                <Text style={styles.specValue}>{product.partNumber}</Text>
               </View>
             </View>
 
-            <Text style={styles.name}>{product.name}</Text>
-            <Text style={styles.price}>{product.price}</Text>
-
-            {/* Actions Box - Internal to Details */}
-            <View style={styles.actionBox}>
-              <TouchableOpacity
-                style={[
-                  styles.buyBtn,
-                  product.status === "Out of Stock" && styles.disabledBtn,
-                ]}
-                onPress={handleAddToCart}
-                disabled={addingToCart || product.status === "Out of Stock"}
-              >
-                {addingToCart ? (
-                  <ActivityIndicator color="#000" />
-                ) : (
-                  <Text style={styles.buyBtnText}>
-                    {product.status === "Out of Stock"
-                      ? "OUT OF STOCK"
-                      : "ADD TO BAG"}
+            <View style={styles.priceCard}>
+              <Text style={styles.price}>${product.price.toFixed(2)}</Text>
+              {product.discount > 0 && (
+                <View style={styles.discountRow}>
+                  <Text style={styles.actualPrice}>
+                    ${product.actualPrice.toFixed(2)}
                   </Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.wishlistBtn,
-                  isWishlisted && styles.wishlistedActive,
-                ]}
-                onPress={toggleWishlist}
-                disabled={wishlistLoading}
-              >
-                {wishlistLoading ? (
-                  <ActivityIndicator size="small" color="#1A1A1A" />
-                ) : (
-                  <Ionicons
-                    name={isWishlisted ? "heart" : "heart-outline"}
-                    size={24}
-                    color={isWishlisted ? "#EF4444" : "#1A1A1A"}
-                  />
-                )}
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.divider} />
-
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.description}>
-              {product.description || "No description available"}
-            </Text>
-
-            {compatibility && (
-              <View style={{ marginTop: 20 }}>
-                <Text style={styles.sectionTitle}>Verified Fitment</Text>
-                <View style={styles.compatCard}>
-                  <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
-                  <View>
-                    <Text style={styles.compatMain}>
-                      {compatibility.vehicleBrand} {compatibility.model}
-                    </Text>
-                    <Text style={styles.compatSub}>
-                      {compatibility.year} • {compatibility.fuelType}
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {product.discount}% OFF
                     </Text>
                   </View>
                 </View>
-              </View>
-            )}
+              )}
+            </View>
+
+            <Text style={styles.stockBadge}>
+              {product.stockQuantity > 0
+                ? `In Stock (${product.stockQuantity})`
+                : "Out of Stock"}
+            </Text>
+
+            <View style={styles.actionRow}>
+              {/* <TouchableOpacity style={styles.cartBtn}>
+                <Text style={styles.cartBtnText}>ADD TO CART</Text>
+              </TouchableOpacity> */}
+              {addingToCart ? (
+                <View style={styles.loaderContainer}>
+                  <ActivityIndicator size="small" color="#F2A20C" />
+                </View>
+              ) : quantity === 0 ? (
+                <TouchableOpacity
+                  style={[styles.cartBtn, isOutOfStock && styles.disabledBtn]}
+                  onPress={() => updateCartAPI(1)}
+                  disabled={isOutOfStock}
+                >
+                  <Ionicons name="cart-outline" size={18} color="#ffffff" />
+                  <Text style={styles.cartBtnText}>ADD</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.quantityContainer}>
+                  <TouchableOpacity
+                    onPress={() => updateCartAPI(quantity - 1)}
+                    style={styles.qtyBtn}
+                  >
+                    <Ionicons name="remove" size={18} color="#000" />
+                  </TouchableOpacity>
+                  <Text style={styles.qtyText}>{quantity}</Text>
+                  <TouchableOpacity
+                    onPress={() => updateCartAPI(quantity + 1)}
+                    style={styles.qtyBtn}
+                  >
+                    <Ionicons name="add" size={18} color="#000" />
+                  </TouchableOpacity>
+                </View>
+              )}
+              <TouchableOpacity style={styles.wishBtn}>
+                <Ionicons name="heart-outline" size={22} color="#0F172A" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Description</Text>
+              <Text style={styles.descText}>{product.description}</Text>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Compatible Vehicles</Text>
+
+              {product.compatibleVehicles?.length > 0 ? (
+                <View style={styles.vehicleGrid}>
+                  {product.compatibleVehicles.map((v: string, i: number) => (
+                    <View key={i} style={styles.vehicleChip}>
+                      <Ionicons name="car-sport" size={14} color="#475569" />
+                      <Text style={styles.vehicleText}>{v}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptyCompatibilityBox}>
+                  <Ionicons
+                    name="alert-circle-outline"
+                    size={18}
+                    color="#94A3B8"
+                  />
+                  <Text style={styles.emptyCompatibilityText}>
+                    No compatible vehicles available
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+      <PremiumAlert
+        visible={alertConfig.visible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
+      />
+    </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
+  safeArea: { flex: 1, backgroundColor: "#F8FAFC" },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
     height: 60,
-  },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "#1A1A1A" },
-  backBtn: { padding: 8 },
-
-  mobileWrapper: { flex: 1 },
-  webWrapper: {
     flexDirection: "row",
-    padding: 40,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    backgroundColor: "#FFF",
+  },
+  headerTitle: { fontSize: 16, fontWeight: "800", color: "#0F172A" },
+  iconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scrollContent: { paddingBottom: 28 },
+  mobileLayout: { flexDirection: "column" },
+  webLayout: {
+    flexDirection: "row",
+    padding: 20,
+    gap: 20,
     maxWidth: 1200,
     alignSelf: "center",
-    gap: 50,
+    width: "100%",
   },
-
-  imageMobile: { width: width, height: 400, resizeMode: "cover" },
-  imageWeb: {
-    width: 500,
-    height: 500,
-    borderRadius: 20,
-    resizeMode: "contain",
-    backgroundColor: "#F8FAFC",
+  imageContainerMobile: {
+    width: "100%",
+    height: width * 0.72,
+    backgroundColor: "#FFF",
   },
-
-  content: { padding: 20, backgroundColor: "#FFF" },
-  contentWeb: { flex: 1, padding: 0 },
-
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
+  imageContainerWeb: {
+    flex: 1,
+    height: 480,
+    backgroundColor: "#FFF",
+    borderRadius: 18,
+    overflow: "hidden",
   },
-  category: {
-    color: "#94A3B8",
+  mainImage: { width: "100%", height: "100%", resizeMode: "contain" },
+  detailsContainerMobile: { padding: 16 },
+  detailsContainerWeb: { flex: 1 },
+  categoryLabel: {
+    fontSize: 10,
     fontWeight: "700",
+    color: "#F59E0B",
     textTransform: "uppercase",
-    fontSize: 12,
+    marginBottom: 6,
   },
-  rating: { flexDirection: "row", alignItems: "center", gap: 4 },
-  ratingText: { fontWeight: "600" },
-  name: { fontSize: 28, fontWeight: "800", color: "#1A1A1A", marginBottom: 8 },
-  price: {
+  title: {
     fontSize: 24,
     fontWeight: "900",
-    color: "#F2A20C",
-    marginBottom: 20,
+    color: "#0F172A",
+    marginBottom: 14,
   },
-
-  actionBox: { flexDirection: "row", gap: 12, marginBottom: 10 },
+  specGrid: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  specCard: {
+    flex: 1,
+    backgroundColor: "#FFF",
+    padding: 12,
+    borderRadius: 12,
+  },
+  specTitle: { fontSize: 10, color: "#94A3B8" },
+  specValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginTop: 4,
+  },
+  priceCard: {
+    backgroundColor: "#FFF",
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 14,
+  },
+  price: { fontSize: 28, fontWeight: "900", color: "#F59E0B" },
+  discountRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 6,
+    alignItems: "center",
+  },
+  actualPrice: {
+    textDecorationLine: "line-through",
+    color: "#94A3B8",
+    fontSize: 13,
+  },
+  badge: {
+    backgroundColor: "#FEF2F2",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  badgeText: { color: "#DC2626", fontWeight: "800", fontSize: 11 },
+  stockBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#ECFDF5",
+    color: "#059669",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    fontWeight: "700",
+    fontSize: 12,
+    marginBottom: 14,
+  },
+  actionRow: { flexDirection: "row", gap: 10, marginBottom: 22 },
+  cartBtn: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: "#0F172A",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cartBtnText: { color: "#FFF", fontWeight: "800", fontSize: 14 },
+  wishBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: "#FFF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  section: { marginBottom: 20 },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginBottom: 10,
+  },
+  descText: { color: "#475569", lineHeight: 22, fontSize: 14 },
+  vehicleGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  vehicleChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: "#FFF",
+  },
+  vehicleText: { fontWeight: "700", color: "#334155", fontSize: 12 },
+  reviewCard: {
+    backgroundColor: "#FFF",
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  reviewHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  reviewerName: {
+    fontWeight: "800",
+    color: "#0F172A",
+    fontSize: 13,
+  },
+  reviewRating: {
+    color: "#F59E0B",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  reviewText: {
+    color: "#475569",
+    fontSize: 13,
+    lineHeight: 20,
+  },
   buyBtn: {
     flex: 1,
     height: 55,
@@ -296,37 +501,38 @@ const styles = StyleSheet.create({
   },
   buyBtnText: { fontSize: 16, fontWeight: "800", color: "#000" },
   disabledBtn: { backgroundColor: "#E2E8F0" },
-
-  wishlistBtn: {
-    width: 55,
-    height: 55,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+  quantityContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F2A20C",
+    borderRadius: 16,
+    padding: 4,
+  },
+  qtyBtn: {
+    width: 36,
+    height: 36,
     justifyContent: "center",
     alignItems: "center",
   },
-  wishlistedActive: { borderColor: "#FECACA", backgroundColor: "#FEF2F2" },
-
-  divider: { height: 1, backgroundColor: "#F0F0F0", marginVertical: 25 },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginBottom: 10,
+  qtyText: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#000",
+    paddingHorizontal: 10,
   },
-  description: { fontSize: 15, color: "#64748B", lineHeight: 24 },
-
-  compatCard: {
+  loaderContainer: { width: 80, alignItems: "center" },
+  emptyCompatibilityBox: {
     flexDirection: "row",
-    backgroundColor: "#F8FAFC",
-    padding: 16,
-    borderRadius: 15,
-    gap: 12,
     alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFF",
+    padding: 14,
+    borderRadius: 12,
   },
-  compatMain: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
-  compatSub: { fontSize: 13, color: "#64748B" },
-});
 
-export default ProductDetails;
+  emptyCompatibilityText: {
+    color: "#94A3B8",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+});
