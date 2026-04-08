@@ -2,36 +2,40 @@ import { useRouter } from "expo-router";
 import { ArrowLeft, Heart, ShoppingCart, Trash2 } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Image,
-    Platform,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import axiosInstance from "../axios/axiosInstance";
+// 🔹 Import your specific APIs
+import { cartApi, wishlistApi } from "../axios/axiosInstance";
 
 const { width } = Dimensions.get("window");
-const COLUMN_WIDTH = (width - 60) / 2; // Two columns with padding
+const COLUMN_WIDTH = (width - 60) / 2;
 
-interface Product {
+// 1. Updated Interface to match your new JSON response
+interface WishlistItem {
   id: number;
-  name: string;
-  price: number;
+  productId: number;
+  productName: string;
   productImage: string;
-  productStatus: string; // "IN" or "OUT"
+  price: number;
+  addedAt: string;
 }
 
 const WishlistPage = () => {
   const router = useRouter();
-  const [wishlist, setWishlist] = useState<Product[]>([]);
+  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     fetchWishlist();
@@ -39,8 +43,9 @@ const WishlistPage = () => {
 
   const fetchWishlist = async () => {
     try {
-      const response = await axiosInstance.get("/wishlist");
-      setWishlist(Array.isArray(response.data) ? response.data : []);
+      const response = await wishlistApi.get("/wishlist");
+      // Your JSON returns an object with an "items" array inside it
+      setWishlist(response.data.items || []);
     } catch (error) {
       console.error("Wishlist fetch error:", error);
     } finally {
@@ -54,18 +59,48 @@ const WishlistPage = () => {
     fetchWishlist();
   }, []);
 
-  const removeFromWishlist = async (id: number) => {
+  // 🔹 Remove Single Item
+  const removeFromWishlist = async (productId: number) => {
+    // Optimistic UI update
+    setWishlist((prev) => prev.filter((item) => item.productId !== productId));
     try {
-      await axiosInstance.delete(`/wishlist/${id}`);
-      setWishlist((prev) => prev.filter((item) => item.id !== id));
+      await wishlistApi.delete(`/wishlist/${productId}`);
     } catch (error) {
       Alert.alert("Error", "Could not remove item");
+      fetchWishlist(); // Revert on failure
+    }
+  };
+
+  // 🔹 Clear Entire Wishlist
+  const clearWishlist = () => {
+    const action = async () => {
+      setWishlist([]); // Optimistically clear UI
+      try {
+        await wishlistApi.delete("/wishlist");
+      } catch (error) {
+        Alert.alert("Error", "Could not clear wishlist");
+        fetchWishlist(); // Revert on failure
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm("Clear your entire wishlist?")) action();
+    } else {
+      Alert.alert(
+        "Clear Wishlist",
+        "Are you sure you want to remove all items?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Clear All", style: "destructive", onPress: action },
+        ],
+      );
     }
   };
 
   const addToCart = async (productId: number) => {
     try {
-      await axiosInstance.post("/cart/add", {
+      // Assuming you use the cartApi for this endpoint
+      await cartApi.post("/cart/add", {
         productId: productId,
         quantity: 1,
       });
@@ -79,36 +114,40 @@ const WishlistPage = () => {
     }
   };
 
-  const renderWishlistItem = ({ item }: { item: Product }) => (
+  const renderWishlistItem = ({ item }: { item: WishlistItem }) => (
     <View style={styles.card}>
       <View style={styles.imageWrapper}>
-        <Image source={{ uri: item.productImage }} style={styles.image} />
+        {/* Placeholder added since your JSON provided a dummy image link */}
+        <Image
+          source={{
+            uri:
+              imageErrors[item.productId] || !item.productImage
+                ? "https://cdn-icons-png.flaticon.com/512/1973/1973636.png"
+                : item.productImage,
+          }}
+          style={styles.image}
+          onError={() =>
+            setImageErrors((prev) => ({ ...prev, [item.productId]: true }))
+          }
+        />
         <TouchableOpacity
           style={styles.removeIcon}
-          onPress={() => removeFromWishlist(item.id)}
+          onPress={() => removeFromWishlist(item.productId)} // Using productId based on your endpoint
         >
           <Trash2 size={16} color="#FF453A" />
         </TouchableOpacity>
-        {item.productStatus === "OUT" && (
-          <View style={styles.outOfStockBadge}>
-            <Text style={styles.outOfStockText}>OUT OF STOCK</Text>
-          </View>
-        )}
       </View>
 
       <View style={styles.infoContainer}>
+        {/* Updated to use productName */}
         <Text style={styles.itemName} numberOfLines={1}>
-          {item.name}
+          {item.productName}
         </Text>
         <Text style={styles.itemPrice}>₹{item.price.toLocaleString()}</Text>
 
         <TouchableOpacity
-          style={[
-            styles.cartBtn,
-            item.productStatus === "OUT" && styles.disabledBtn,
-          ]}
-          disabled={item.productStatus === "OUT"}
-          onPress={() => addToCart(item.id)}
+          style={styles.cartBtn}
+          onPress={() => addToCart(item.productId)}
         >
           <ShoppingCart size={16} color="#1A1A1A" />
           <Text style={styles.cartBtnText}>ADD TO CART</Text>
@@ -117,51 +156,65 @@ const WishlistPage = () => {
     </View>
   );
 
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#F2A20C" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.headerIcon}
+        >
           <ArrowLeft color="#FFF" size={24} />
         </TouchableOpacity>
-        <Text style={styles.header}>MY WISHLIST</Text>
-        <View style={{ width: 24 }} /> {/* Spacer */}
+
+        <Text style={styles.header}>MY WISHLIST ({wishlist.length})</Text>
+
+        {/* Clear Wishlist Button (Only shows if there are items) */}
+        <View style={styles.headerIcon}>
+          {wishlist.length > 0 ? (
+            <TouchableOpacity onPress={clearWishlist}>
+              <Trash2 color="#FF453A" size={22} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
 
-      {loading && !refreshing ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#F2A20C" />
-        </View>
-      ) : (
-        <FlatList
-          data={wishlist}
-          renderItem={renderWishlistItem}
-          keyExtractor={(item) => item.id.toString()}
-          numColumns={2}
-          columnWrapperStyle={styles.columnWrapper}
-          contentContainerStyle={styles.listContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#F2A20C"
-              colors={["#F2A20C"]}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Heart size={60} color="#333" strokeWidth={1.5} />
-              <Text style={styles.emptyText}>Your wishlist is empty</Text>
-              <TouchableOpacity
-                style={styles.shopBtn}
-                onPress={() => router.push("/")}
-              >
-                <Text style={styles.shopBtnText}>EXPLORE PARTS</Text>
-              </TouchableOpacity>
-            </View>
-          }
-        />
-      )}
+      <FlatList
+        data={wishlist}
+        renderItem={renderWishlistItem}
+        keyExtractor={(item) => item.id.toString()}
+        numColumns={2}
+        columnWrapperStyle={styles.columnWrapper}
+        contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#F2A20C"
+            colors={["#F2A20C"]}
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Heart size={60} color="#333" strokeWidth={1.5} />
+            <Text style={styles.emptyText}>Your wishlist is empty</Text>
+            <TouchableOpacity
+              style={styles.shopBtn}
+              onPress={() => router.push("/")}
+            >
+              <Text style={styles.shopBtnText}>EXPLORE PARTS</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      />
     </View>
   );
 };
@@ -176,6 +229,7 @@ const styles = StyleSheet.create({
     marginTop: 50,
     marginBottom: 20,
   },
+  headerIcon: { width: 30, alignItems: "center" }, // Ensures the title stays perfectly centered
   header: {
     color: "#FFF",
     fontSize: 20,
@@ -183,7 +237,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  listContainer: { paddingHorizontal: 20, paddingBottom: 40 },
+  listContainer: { paddingHorizontal: 20, paddingBottom: 40, flexGrow: 1 },
   columnWrapper: { justifyContent: "space-between" },
   card: {
     backgroundColor: "#262626",
@@ -194,8 +248,8 @@ const styles = StyleSheet.create({
     borderColor: "#333",
     overflow: "hidden",
   },
-  imageWrapper: { position: "relative" },
-  image: { width: "100%", height: 140, backgroundColor: "#333" },
+  imageWrapper: { position: "relative", backgroundColor: "#333" },
+  image: { width: "100%", height: 140, resizeMode: "cover" },
   removeIcon: {
     position: "absolute",
     top: 8,
@@ -204,15 +258,6 @@ const styles = StyleSheet.create({
     padding: 6,
     borderRadius: 20,
   },
-  outOfStockBadge: {
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    backgroundColor: "rgba(255, 69, 58, 0.8)",
-    paddingVertical: 4,
-    alignItems: "center",
-  },
-  outOfStockText: { color: "#FFF", fontSize: 10, fontWeight: "900" },
   infoContainer: { padding: 12 },
   itemName: { color: "#FFF", fontSize: 14, fontWeight: "700", marginBottom: 4 },
   itemPrice: {
@@ -230,7 +275,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     gap: 6,
   },
-  disabledBtn: { backgroundColor: "#444" },
   cartBtnText: { color: "#1A1A1A", fontSize: 12, fontWeight: "900" },
   emptyContainer: { alignItems: "center", marginTop: 100 },
   emptyText: { color: "#666", fontSize: 16, marginTop: 20, marginBottom: 30 },
