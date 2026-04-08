@@ -3,9 +3,10 @@ import axios from "axios";
 
 // 🔹 Base URLs for different services
 const ORDER_BASE_URL = "http://192.168.0.225:8080/api";
-const BASE_URL = "http://192.168.0.223:8080/api";
+const BASE_URL = "http://192.168.0.158:8080/api"; //login auth
 const CATEGORY_BASE_URL = "http://192.168.0.177:8080/api";
 const CART_URL = "http://192.168.0.225:8080/api";
+const WISHLIST_URL = "http://192.168.0.158:8081/api";
 
 export const mainApi = axios.create({
   baseURL: BASE_URL,
@@ -32,6 +33,11 @@ export const orderApi = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+export const wishlistApi = axios.create({
+  baseURL: WISHLIST_URL,
+  headers: { "Content-Type": "application/json" },
 });
 
 // 🔹 Common interceptor function
@@ -65,6 +71,7 @@ attachToken(mainApi);
 attachToken(categoryApi);
 attachToken(orderApi);
 attachToken(cartApi);
+attachToken(wishlistApi);
 
 // 🔹 Export default (optional)
 export default mainApi;
