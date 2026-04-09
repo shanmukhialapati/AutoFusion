@@ -1,4 +1,4 @@
-import { orderApi } from "@/axios/axiosInstance";
+import { cartApi } from "@/axios/axiosInstance";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -6,9 +6,8 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Modal,
   Pressable,
-  RefreshControl,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,36 +15,15 @@ import {
   View,
 } from "react-native";
 
-interface OrderItem {
-  id: number;
-  productId: number;
-  pname: string;
-  quantity: number;
-  totalPrice: number;
-}
-
-interface Order {
-  orderId: number;
-  orderStatus: string;
-  paymentMode: string;
-  deliveryCost: number;
-  finalAmount: number;
-  orderItems: OrderItem[];
-}
-
-const STATUS_CONFIG: Record<
+const STATUS_MAP: Record<
   string,
-  { label: string; color: string; icon: keyof typeof Ionicons.glyphMap }
+  { label: string; color: string; icon: string }
 > = {
-  PLACED: {
-    label: "Order Placed",
-    color: "#3B82F6",
-    icon: "cube-outline",
-  },
+  PLACED: { label: "Placed", color: "#3B82F6", icon: "cube-outline" },
   DISPATCHED: {
     label: "Dispatched",
-    color: "#F59E0B",
-    icon: "car-outline",
+    color: "#8B5CF6",
+    icon: "airplane-outline",
   },
   DELIVERED: {
     label: "Delivered",
@@ -57,42 +35,40 @@ const STATUS_CONFIG: Record<
     color: "#EF4444",
     icon: "close-circle-outline",
   },
+  PAYMENT_PENDING: { label: "Pending", color: "#F59E0B", icon: "time-outline" },
 };
 
-const FILTERS = ["All", "PLACED", "DISPATCHED", "DELIVERED", "CANCELLED"];
+const FILTERS = [
+  "All",
+  "PLACED",
+  "DISPATCHED",
+  "DELIVERED",
+  "CANCELLED",
+  "PAYMENT_PENDING",
+];
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState("All");
 
-  const [reviewModalVisible, setReviewModalVisible] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [rating, setRating] = useState(0);
-  const [reviewText, setReviewText] = useState("");
-
-  const [deliveringOrderId, setDeliveringOrderId] = useState<number | null>(
-    null,
-  );
+  const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
+  const [ratings, setRatings] = useState<Record<number, number>>({});
+  const [comments, setComments] = useState<Record<number, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState<number | null>(null);
 
   const fetchOrders = useCallback(async () => {
     try {
+      setLoading(true);
       const token = await AsyncStorage.getItem("token");
-
-      const res = await orderApi.get("/orders/user", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const res = await cartApi.get("/orders/user", {
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       setOrders(res.data || []);
     } catch (error) {
-      console.error("Fetch Orders Error:", error);
-      Alert.alert("Error", "Failed to load orders.");
+      console.error("Error fetching orders:", error);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, []);
 
@@ -100,168 +76,200 @@ export default function OrdersPage() {
     fetchOrders();
   }, [fetchOrders]);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchOrders();
-  };
-
   const handleMarkDelivered = async (orderId: number) => {
     try {
-      setDeliveringOrderId(orderId);
-
       const token = await AsyncStorage.getItem("token");
+      const res = await cartApi.patch(`/orders/deliver/${orderId}`, null, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      await orderApi.patch(
-        `/orders/deliver/${orderId}`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      Alert.alert("Success", "Order marked as delivered.");
-      fetchOrders();
+      if (res.status === 200) {
+        Alert.alert("Success", "Order marked as received!");
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.orderId === orderId ? { ...o, orderStatus: "DELIVERED" } : o,
+          ),
+        );
+      }
     } catch (error) {
-      console.error("Deliver Update Error:", error);
-      Alert.alert("Error", "Failed to mark order as delivered.");
-    } finally {
-      setDeliveringOrderId(null);
+      Alert.alert("Error", "Failed to update status.");
     }
   };
 
-  const handleSubmitReview = () => {
+  const handlePostReview = async (productId: number, orderId: number) => {
+    const rating = ratings[productId] || 0;
+    const comment = comments[productId] || "";
+
     if (rating === 0) {
-      Alert.alert("Rating Required", "Please select a rating.");
+      Alert.alert("Rating Required", "Please select a star rating.");
       return;
     }
 
-    Alert.alert(
-      "Review Submitted",
-      `Order #${selectedOrder?.orderId}\nRating: ${rating}\nReview: ${
-        reviewText || "No Comment"
-      }`,
-    );
+    try {
+      setIsSubmitting(productId);
+      const token = await AsyncStorage.getItem("token");
+      const payload = { productId, orderId, rating, comment };
 
-    closeReviewModal();
-  };
+      await cartApi.post("/reviews", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-  const closeReviewModal = () => {
-    setReviewModalVisible(false);
-    setSelectedOrder(null);
-    setRating(0);
-    setReviewText("");
+      Alert.alert("Success", "Your review has been posted!");
+      setRatings((prev) => ({ ...prev, [productId]: 0 }));
+      setComments((prev) => ({ ...prev, [productId]: "" }));
+    } catch (error) {
+      Alert.alert("Error", "Could not submit review.");
+    } finally {
+      setIsSubmitting(null);
+    }
   };
 
   const filteredOrders = useMemo(() => {
-    return activeFilter === "All"
-      ? orders
-      : orders.filter((o) => o.orderStatus === activeFilter);
+    if (activeFilter === "All") return orders;
+    return orders.filter((o) => o.orderStatus === activeFilter);
   }, [activeFilter, orders]);
 
-  const renderStars = () => (
-    <View style={styles.starRow}>
-      {[1, 2, 3, 4, 5].map((star) => (
-        <Pressable key={star} onPress={() => setRating(star)}>
-          <Ionicons
-            name={rating >= star ? "star" : "star-outline"}
-            size={30}
-            color="#F2A20C"
-          />
-        </Pressable>
-      ))}
-    </View>
-  );
-
-  const renderOrderCard = ({ item }: { item: Order }) => {
-    const config = STATUS_CONFIG[item.orderStatus] || {
+  const renderOrderCard = ({ item }: { item: any }) => {
+    const status = STATUS_MAP[item.orderStatus] || {
       label: item.orderStatus,
       color: "#94A3B8",
-      icon: "help-circle-outline" as keyof typeof Ionicons.glyphMap,
+      icon: "help-circle-outline",
     };
+    const isExpanded = expandedOrderId === item.orderId;
+    const orderItems = item.orderItems || [];
 
     return (
       <View style={styles.orderCard}>
-        <View style={styles.cardHeader}>
-          <View>
-            <Text style={styles.orderIdText}>Order #{item.orderId}</Text>
-            <Text style={styles.paymentTag}>{item.paymentMode}</Text>
-          </View>
-
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: `${config.color}15` },
-            ]}
-          >
-            <Ionicons
-              name={config.icon}
-              size={14}
-              color={config.color}
-              style={{ marginRight: 4 }}
-            />
-            <Text style={[styles.statusText, { color: config.color }]}>
-              {config.label}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.productsSection}>
-          {item.orderItems.map((prod) => (
-            <View key={prod.id} style={styles.productRow}>
-              <Text style={styles.productName} numberOfLines={1}>
-                {prod.quantity}x {prod.pname}
-              </Text>
-              <Text style={styles.productPrice}>
-                ${prod.totalPrice.toFixed(2)}
+        <View
+          style={[styles.statusIndicator, { backgroundColor: status.color }]}
+        />
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <View>
+              <Text style={styles.orderId}>Order #{item.orderId}</Text>
+              <Text style={styles.paymentText}>
+                {item.paymentMode} • {orderItems.length} Products
               </Text>
             </View>
-          ))}
-        </View>
-
-        <View style={styles.divider} />
-
-        <View style={styles.totalsRow}>
-          <View>
-            <Text style={styles.feeText}>
-              Delivery: ${item.deliveryCost.toFixed(2)}
-            </Text>
-            <Text style={styles.totalLabel}>Total Amount</Text>
-            <Text style={styles.finalPrice}>
-              ${item.finalAmount.toFixed(2)}
-            </Text>
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: `${status.color}15` },
+              ]}
+            >
+              <Ionicons
+                name={status.icon as any}
+                size={14}
+                color={status.color}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={[styles.statusText, { color: status.color }]}>
+                {status.label}
+              </Text>
+            </View>
           </View>
 
-          {item.orderStatus === "DISPATCHED" && (
-            <Pressable
-              style={styles.deliverBtn}
-              onPress={() => handleMarkDelivered(item.orderId)}
-            >
-              {deliveringOrderId === item.orderId ? (
-                <ActivityIndicator color="#000" />
-              ) : (
-                <Text style={styles.deliverBtnText}>Received</Text>
-              )}
-            </Pressable>
-          )}
+          <View style={styles.divider} />
+          <Text style={styles.metaLabel}>Total Price</Text>
+          <Text style={styles.totalPrice}>${item.finalAmount?.toFixed(2)}</Text>
 
-          {item.orderStatus === "DELIVERED" && (
-            <View style={styles.deliveredActions}>
-              <View style={styles.deliveredCheck}>
-                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                <Text style={styles.completedText}>Completed</Text>
-              </View>
-
+          <View style={styles.actionContainer}>
+            {/* MATCHING DISPATCHED STATUS FROM JSON */}
+            {item.orderStatus === "DISPATCHED" && (
               <Pressable
-                style={styles.reviewBtn}
-                onPress={() => {
-                  setSelectedOrder(item);
-                  setReviewModalVisible(true);
-                }}
+                style={styles.primaryAction}
+                onPress={() => handleMarkDelivered(item.orderId)}
               >
-                <Text style={styles.reviewBtnText}>Review Order</Text>
+                <Text style={styles.primaryActionText}>Mark as Received</Text>
               </Pressable>
+            )}
+
+            {item.orderStatus === "DELIVERED" && (
+              <Pressable
+                style={styles.secondaryAction}
+                onPress={() =>
+                  setExpandedOrderId(isExpanded ? null : item.orderId)
+                }
+              >
+                <Ionicons
+                  name={isExpanded ? "chevron-up" : "star-outline"}
+                  size={16}
+                  color="#475569"
+                />
+                <Text style={styles.secondaryActionText}>
+                  {isExpanded ? "Hide Review" : "Write Review"}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
+          {isExpanded && (
+            <View style={styles.reviewSection}>
+              {orderItems.length > 0 ? (
+                orderItems.map((prod: any) => (
+                  <View key={prod.productId} style={styles.productReviewBox}>
+                    <Text style={styles.productNameReview}>{prod.pname}</Text>
+                    <View style={styles.starRow}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Pressable
+                          key={star}
+                          onPress={() =>
+                            setRatings((p) => ({
+                              ...p,
+                              [prod.productId]: star,
+                            }))
+                          }
+                        >
+                          <Ionicons
+                            name={
+                              (ratings[prod.productId] || 0) >= star
+                                ? "star"
+                                : "star-outline"
+                            }
+                            size={26}
+                            color="#F2A20C"
+                          />
+                        </Pressable>
+                      ))}
+                    </View>
+                    <TextInput
+                      style={styles.reviewInput}
+                      placeholder="Feedback..."
+                      value={comments[prod.productId] || ""}
+                      onChangeText={(t) =>
+                        setComments((p) => ({ ...p, [prod.productId]: t }))
+                      }
+                      multiline
+                    />
+                    <Pressable
+                      style={[
+                        styles.submitReviewBtn,
+                        (ratings[prod.productId] || 0) === 0 && {
+                          opacity: 0.5,
+                        },
+                      ]}
+                      onPress={() =>
+                        handlePostReview(prod.productId, item.orderId)
+                      }
+                      disabled={isSubmitting === prod.productId}
+                    >
+                      {isSubmitting === prod.productId ? (
+                        <ActivityIndicator color="#FFF" />
+                      ) : (
+                        <Text style={styles.submitReviewText}>
+                          Submit Review
+                        </Text>
+                      )}
+                    </Pressable>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.noProductsBox}>
+                  <Text style={styles.noProductsText}>
+                    No items found in this order.
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -269,307 +277,160 @@ export default function OrdersPage() {
     );
   };
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#F2A20C" />
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <View style={styles.pageHeader}>
-        <Text style={styles.title}>Your Orders</Text>
-        <Text style={styles.subtitle}>{orders.length} total orders found</Text>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.headerSection}>
+        <Text style={styles.welcomeText}>My Purchases</Text>
+        <Pressable onPress={fetchOrders} style={styles.refreshBtn}>
+          <Ionicons name="refresh" size={20} color="#0F172A" />
+        </Pressable>
       </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterBar}
-      >
-        {FILTERS.map((filter) => (
-          <Pressable
-            key={filter}
-            onPress={() => setActiveFilter(filter)}
-            style={[styles.chip, activeFilter === filter && styles.activeChip]}
-          >
-            <Text
+      <View style={{ height: 50 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterList}
+        >
+          {FILTERS.map((f) => (
+            <Pressable
+              key={f}
+              onPress={() => setActiveFilter(f)}
               style={[
-                styles.chipText,
-                activeFilter === filter && styles.activeChipText,
+                styles.filterChip,
+                activeFilter === f && styles.activeChip,
               ]}
             >
-              {filter === "All"
-                ? "All"
-                : STATUS_CONFIG[filter]?.label || filter}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-
+              <Text
+                style={[
+                  styles.filterText,
+                  activeFilter === f && styles.activeFilterText,
+                ]}
+              >
+                {f === "All" ? "All" : STATUS_MAP[f]?.label || f}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
       <FlatList
         data={filteredOrders}
         keyExtractor={(item) => item.orderId.toString()}
         renderItem={renderOrderCard}
-        contentContainerStyle={styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
+        contentContainerStyle={styles.listPadding}
         ListEmptyComponent={
-          <View style={styles.emptyBox}>
-            <Ionicons name="bag-outline" size={50} color="#94A3B8" />
-            <Text style={styles.emptyText}>No orders found</Text>
-          </View>
+          <Text style={styles.emptyTitle}>No orders found</Text>
         }
       />
-
-      <Modal
-        visible={reviewModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={closeReviewModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.reviewModal}>
-            <Text style={styles.modalTitle}>Rate Your Order</Text>
-
-            {renderStars()}
-
-            <TextInput
-              placeholder="Write your review..."
-              value={reviewText}
-              onChangeText={setReviewText}
-              multiline
-              style={styles.reviewInput}
-            />
-
-            <View style={styles.modalActions}>
-              <Pressable style={styles.cancelBtn} onPress={closeReviewModal}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </Pressable>
-
-              <Pressable style={styles.submitBtn} onPress={handleSubmitReview}>
-                <Text style={styles.submitBtnText}>Submit</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F1F5F9" },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  pageHeader: { padding: 20, paddingTop: 30 },
-  title: { fontSize: 26, fontWeight: "900", color: "#0F172A" },
-  subtitle: { fontSize: 14, color: "#64748B", marginTop: 4 },
-
-  filterBar: { height: 50, paddingHorizontal: 20, paddingBottom: 10, gap: 10 },
-  chip: {
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  headerSection: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+  },
+  welcomeText: { fontSize: 24, fontWeight: "800", color: "#0F172A" },
+  refreshBtn: {
+    padding: 8,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    elevation: 2,
+  },
+  filterList: { paddingHorizontal: 20, gap: 8, marginBottom: 10 },
+  filterChip: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
     backgroundColor: "#E2E8F0",
   },
   activeChip: { backgroundColor: "#0F172A" },
-  chipText: { fontSize: 13, fontWeight: "700", color: "#475569" },
-  activeChipText: { color: "#FFF" },
-
-  listContainer: { paddingHorizontal: 20, paddingBottom: 40 },
-
+  filterText: { fontSize: 13, fontWeight: "600", color: "#475569" },
+  activeFilterText: { color: "#FFF" },
+  listPadding: { paddingHorizontal: 20, paddingBottom: 40 },
   orderCard: {
     backgroundColor: "#FFF",
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 16,
     marginBottom: 16,
+    flexDirection: "row",
+    overflow: "hidden",
     elevation: 3,
   },
-
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
-  orderIdText: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#1E293B",
-  },
-
-  paymentTag: {
-    fontSize: 10,
-    color: "#94A3B8",
-    fontWeight: "800",
-    marginTop: 2,
-  },
-
+  statusIndicator: { width: 5 },
+  cardContent: { flex: 1, padding: 16 },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between" },
+  orderId: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
+  paymentText: { fontSize: 12, color: "#94A3B8", marginTop: 2 },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
-
-  statusText: {
-    fontSize: 11,
-    fontWeight: "800",
-  },
-
-  productsSection: { marginTop: 15, gap: 8 },
-
-  productRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
-  productName: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#475569",
-  },
-
-  productPrice: {
-    fontSize: 13,
+  statusText: { fontSize: 11, fontWeight: "700" },
+  divider: { height: 1, backgroundColor: "#F1F5F9", marginVertical: 12 },
+  metaLabel: {
+    fontSize: 10,
+    color: "#94A3B8",
+    textTransform: "uppercase",
     fontWeight: "700",
-    color: "#1E293B",
   },
-
-  divider: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
-    marginVertical: 15,
-  },
-
-  totalsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-  },
-
-  feeText: { fontSize: 11, color: "#94A3B8" },
-  totalLabel: { fontSize: 10, color: "#64748B", fontWeight: "700" },
-  finalPrice: { fontSize: 22, fontWeight: "900", color: "#0F172A" },
-
-  deliverBtn: {
+  totalPrice: { fontSize: 18, fontWeight: "800", color: "#0F172A" },
+  actionContainer: { marginTop: 15 },
+  primaryAction: {
     backgroundColor: "#F2A20C",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
   },
-
-  deliverBtnText: {
-    color: "#000",
-    fontWeight: "800",
-  },
-
-  deliveredActions: {
-    alignItems: "flex-end",
-    gap: 8,
-  },
-
-  deliveredCheck: {
+  primaryActionText: { color: "#000", fontWeight: "700", fontSize: 14 },
+  secondaryAction: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-  },
-
-  completedText: {
-    color: "#10B981",
-    fontWeight: "700",
-  },
-
-  reviewBtn: {
-    backgroundColor: "#0F172A",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-
-  reviewBtnText: {
-    color: "#FFF",
-    fontWeight: "700",
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
-    padding: 20,
+    paddingVertical: 8,
+    gap: 6,
   },
-
-  reviewModal: {
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    padding: 20,
+  secondaryActionText: { color: "#475569", fontWeight: "700", fontSize: 14 },
+  reviewSection: {
+    marginTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    paddingTop: 15,
   },
-
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    marginBottom: 20,
+  productReviewBox: {
+    marginBottom: 15,
+    backgroundColor: "#F8FAFC",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
-
-  starRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 10,
-    marginBottom: 20,
-  },
-
+  productNameReview: { fontSize: 14, fontWeight: "700", color: "#1E293B" },
+  starRow: { flexDirection: "row", marginVertical: 10, gap: 8 },
   reviewInput: {
-    minHeight: 100,
+    backgroundColor: "#FFF",
     borderWidth: 1,
     borderColor: "#CBD5E1",
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 8,
+    padding: 10,
+    minHeight: 80,
     textAlignVertical: "top",
-    marginBottom: 20,
+    color: "#1E293B",
   },
-
-  modalActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 10,
-  },
-
-  cancelBtn: {
-    backgroundColor: "#E2E8F0",
-    paddingHorizontal: 18,
+  submitReviewBtn: {
+    backgroundColor: "#0F172A",
+    marginTop: 12,
     paddingVertical: 12,
-    borderRadius: 10,
-  },
-
-  cancelBtnText: {
-    color: "#334155",
-    fontWeight: "700",
-  },
-
-  submitBtn: {
-    backgroundColor: "#F2A20C",
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 10,
-  },
-
-  submitBtnText: {
-    color: "#000",
-    fontWeight: "800",
-  },
-
-  emptyBox: {
+    borderRadius: 8,
     alignItems: "center",
-    marginTop: 60,
   },
-
-  emptyText: {
-    marginTop: 10,
-    color: "#64748B",
-    fontWeight: "600",
-  },
+  submitReviewText: { color: "#FFF", fontWeight: "700" },
+  noProductsBox: { padding: 12, backgroundColor: "#FEF2F2", borderRadius: 8 },
+  noProductsText: { color: "#B91C1C", fontSize: 13, textAlign: "center" },
+  emptyTitle: { textAlign: "center", marginTop: 50, color: "#94A3B8" },
 });

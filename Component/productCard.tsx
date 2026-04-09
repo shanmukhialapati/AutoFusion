@@ -25,6 +25,7 @@ export type Product = {
   discount?: number;
   category: string;
   status: "Active" | "Low Stock" | "Out of Stock";
+  rating?: number;
   stock: number;
   image: string | string[];
   description?: string;
@@ -150,7 +151,6 @@ const ProductCard: React.FC<Props> = ({
         return;
       }
 
-      const numericPrice = parseFloat(product.price.replace(/[^0-9.]/g, ""));
       const payload = {
         productId: product.id,
         // pname: product.name,
@@ -165,9 +165,17 @@ const ProductCard: React.FC<Props> = ({
       });
 
       if (response.status === 200 || response.status === 201) {
-        setQuantity(newQty);
-        if (newQty === 1)
+        // FIX: Only show alert if we are moving from 0 to 1 (Adding for the first time)
+        // and NOT when decreasing from 2 to 1.
+        if (newQty === 1 && quantity === 0) {
           showAlert("success", "Success", `${product.name} added to bag!`);
+        }
+        // Optional: Add an alert for removing the item entirely
+        else if (newQty === 0 && quantity === 1) {
+          showAlert("warning", "Removed", `${product.name} removed from bag.`);
+        }
+
+        setQuantity(newQty);
       }
     } catch (error: any) {
       showAlert(
@@ -314,7 +322,7 @@ const ProductCard: React.FC<Props> = ({
         <View style={[styles.content, isAndroid && { padding: 8 }]}>
           <View style={styles.ratingRow}>
             <Ionicons name="star" size={12} color="#FFD700" />
-            <Text style={styles.ratingText}>4.9 (120+ Reviews)</Text>
+            <Text style={styles.ratingText}>{product.rating}</Text>
           </View>
           <Text style={styles.name} numberOfLines={1}>
             {product.name}

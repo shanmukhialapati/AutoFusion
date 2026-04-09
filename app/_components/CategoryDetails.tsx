@@ -160,7 +160,7 @@ export default function CategoryDetails() {
           <View style={styles.sidebar}>
             <Text style={styles.sidebarHeader}>CATEGORIES</Text>
             <ScrollView
-              showsVerticalScrollIndicator={false} // <-- Added this
+              showsVerticalScrollIndicator={false}
               showsHorizontalScrollIndicator={false}
             >
               {categories.map((cat) => (

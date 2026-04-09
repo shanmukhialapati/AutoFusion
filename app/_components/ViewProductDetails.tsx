@@ -68,7 +68,7 @@ export default function ProductDetails() {
 
   const fetchReviews = useCallback(async () => {
     try {
-      const res = await categoryApi.get(`/reviews/${id}`);
+      const res = await cartApi.get(`/reviews/${id}`);
       setReviewsData(res.data);
     } catch (err) {
       console.log(err);
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 16, fontWeight: "800", color: "#111827" },
   pageWrap: {
-    flexDirection: isDesktop ? "row" : "column",
+    flexDirection: Platform.OS === "web" ? "row" : "column",
     maxWidth: 1280,
     width: "100%",
     alignSelf: "center",
@@ -335,14 +335,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 24,
     padding: 20,
-    minHeight: Platform.OS === "web" ? 420 : 250,
+    minHeight: Platform.OS === "web" ? 400 : 250,
     justifyContent: "center",
     alignItems: "center",
   },
   productImage: {
     width: "100%",
-    height: isDesktop ? 480 : 320,
-    resizeMode: "contain",
+    height: isDesktop ? 480 : 300,
+    resizeMode: "cover",
+    borderRadius: 16,
   },
   infoCard: {
     flex: 1,
