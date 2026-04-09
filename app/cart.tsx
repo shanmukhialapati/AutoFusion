@@ -53,7 +53,7 @@ const CartPage = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Hardcoded UID (Replace with your AuthContext user ID later)
-  const USER_ID = "8430c82d-a2c5-4eae-8ad8-d317ab029272";
+  // const USER_ID = "8430c82d-a2c5-4eae-8ad8-d317ab029272";
 
   useEffect(() => {
     fetchCart();
@@ -61,7 +61,7 @@ const CartPage = () => {
 
   const fetchCart = async () => {
     try {
-      const response = await orderApi.get(`/orders/cart/${USER_ID}`);
+      const response = await orderApi.get(`/orders/cart`);
       const data: CartResponse = response.data;
 
       // Extract the new object structure into our state

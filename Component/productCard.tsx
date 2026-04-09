@@ -38,6 +38,7 @@ export type Product = {
 
 type Props = {
   product: Product;
+  initialQuantity?: number;
   onAddToCart?: (product: Product, quantity: number) => void;
   onToggleWishlist: (product: Product) => void;
   onView: (product: Product) => void;
@@ -46,11 +47,12 @@ type Props = {
 const ProductCard: React.FC<Props> = ({
   product,
   onToggleWishlist,
+  initialQuantity = 0,
   onView,
 }) => {
   const router = useRouter();
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [quantity, setQuantity] = useState(0);
+  const [quantity, setQuantity] = useState(initialQuantity);
   const [loading, setLoading] = useState(false);
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
@@ -76,6 +78,36 @@ const ProductCard: React.FC<Props> = ({
   const showAlert = (type: AlertType, title: string, message: string) => {
     setAlertConfig({ visible: true, type, title, message });
   };
+  useEffect(() => {
+    const fetchCartStatus = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) return;
+
+        const res = await cartApi.get("/orders/cart", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // KEY FIX: Use res.data.cartItems based on your JSON structure
+        const items = res.data?.cartItems || [];
+
+        // Find the item where productId matches
+        const cartItem = items.find(
+          (item: any) => item.productId?.toString() === product.id.toString(),
+        );
+
+        if (cartItem) {
+          setQuantity(cartItem.quantity);
+        } else {
+          setQuantity(0);
+        }
+      } catch (err) {
+        console.log("Cart fetch error:", err);
+      }
+    };
+
+    fetchCartStatus();
+  }, [product.id, initialQuantity]);
   useEffect(() => {
     const checkWishlistStatus = async () => {
       try {
@@ -120,11 +152,11 @@ const ProductCard: React.FC<Props> = ({
 
       const numericPrice = parseFloat(product.price.replace(/[^0-9.]/g, ""));
       const payload = {
-        pid: product.id,
-        pname: product.name,
-        actualPrice: product.actualPrice || numericPrice,
-        discount: product.discount || 0,
-        price: numericPrice,
+        productId: product.id,
+        // pname: product.name,
+        // actualPrice: product.actualPrice || numericPrice,
+        // discount: product.discount || 0,
+        // price: numericPrice,
         quantity: newQty,
       };
 
@@ -452,8 +484,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#F2A20C",
-    borderRadius: 16,
-    padding: 4,
+    borderRadius: 13,
+    // padding: 2,
   },
   qtyBtn: {
     width: 36,
@@ -465,7 +497,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "900",
     color: "#000",
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
   },
   loaderContainer: { width: 80, alignItems: "center" },
   badge: {

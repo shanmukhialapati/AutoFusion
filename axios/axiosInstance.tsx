@@ -1,12 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-const LOGIN_URL = "http://192.168.0.158:8080/api";
-const BASE_URL = "http://192.168.0.223:8081/api";
-const CATEGORY_BASE_URL = "http://192.168.0.177:8080/api";
-const CART_URL = "http://192.168.0.225:8080/api";
-const ORDER_BASE_URL = "http://192.168.0.225:8080/api";
-const WISHLIST_URL = "http://192.168.0.158:8081/api";
+const LOGIN_URL = "http://192.168.0.200:8081/api";
+const BASE_URL = "http://192.168.0.200:8081/api";
+const CATEGORY_BASE_URL = "http://192.168.0.200:8081/api";
+const CART_URL = "http://192.168.0.200:8081/api";
+const ORDER_BASE_URL = "http://192.168.0.200:8081/api";
+const WISHLIST_URL = "http://192.168.0.200:8081/api";
 
 export const mainApi = axios.create({
   baseURL: BASE_URL,

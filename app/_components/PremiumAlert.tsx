@@ -13,7 +13,8 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");
 
-type AlertType = "success" | "warning" | "error";
+// Added 'confirm' to the type definition
+type AlertType = "success" | "warning" | "error" | "confirm";
 
 interface Props {
   visible: boolean;
@@ -23,6 +24,7 @@ interface Props {
   onClose: () => void;
   onConfirm?: () => void;
   confirmText?: string;
+  cancelText?: string;
 }
 
 const PremiumAlert: React.FC<Props> = ({
@@ -33,7 +35,11 @@ const PremiumAlert: React.FC<Props> = ({
   onClose,
   onConfirm,
   confirmText = "OK",
+  cancelText = "CANCEL",
 }) => {
+  // Check if it's a confirmation type to drive the layout
+  const isConfirmType = type === "confirm";
+
   const getTheme = () => {
     switch (type) {
       case "success":
@@ -56,6 +62,13 @@ const PremiumAlert: React.FC<Props> = ({
           btnBg: "#ff0000",
           icon: "alert-circle",
           bgCircle: "#fef2f2",
+        };
+      case "confirm":
+        return {
+          color: "#3b82f6", // Premium Blue for confirmation
+          btnBg: "#3b82f6",
+          icon: "help-circle",
+          bgCircle: "#eff6ff",
         };
       default:
         return {
@@ -90,7 +103,6 @@ const PremiumAlert: React.FC<Props> = ({
           </TouchableOpacity>
 
           <View style={styles.iconContainer}>
-            <View />
             <View
               style={[
                 styles.mainCircle,
@@ -112,13 +124,39 @@ const PremiumAlert: React.FC<Props> = ({
 
           <View style={styles.divider} />
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={onConfirm || onClose}
-            style={[styles.confirmBtn, { backgroundColor: theme.btnBg }]}
+          <View
+            style={[
+              styles.buttonRow,
+              !isConfirmType && { justifyContent: "center" },
+            ]}
           >
-            <Text style={styles.confirmText}>{confirmText.toUpperCase()}</Text>
-          </TouchableOpacity>
+            {/* Cancel button only shows for 'confirm' type */}
+            {isConfirmType && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={onClose}
+                style={[styles.btn, styles.cancelBtn]}
+              >
+                <Text style={styles.cancelText}>
+                  {cancelText.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={onConfirm || onClose}
+              style={[
+                styles.btn,
+                { backgroundColor: theme.btnBg },
+                !isConfirmType && { maxWidth: 200 }, // Center and constrain if single button
+              ]}
+            >
+              <Text style={styles.confirmText}>
+                {confirmText.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -134,7 +172,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.4)",
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
   },
   alertBox: {
     width: Math.min(width - 40, 340),
@@ -148,8 +186,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
     shadowRadius: 20,
-    borderWidth: 1,
-    borderColor: "#f8fafc",
   },
   closeBtn: {
     position: "absolute",
@@ -159,16 +195,6 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginBottom: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  blurBg: {
-    position: "absolute",
-    width: 80,
-    height: 40,
-    borderRadius: 40,
-    opacity: 0.5,
-    transform: [{ scale: 1.5 }],
   },
   mainCircle: {
     width: 72,
@@ -189,11 +215,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   message: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#64748b",
     textAlign: "center",
-    lineHeight: 22,
-    paddingHorizontal: 10,
+    lineHeight: 20,
+    paddingHorizontal: 5,
   },
   divider: {
     width: "100%",
@@ -201,24 +227,34 @@ const styles = StyleSheet.create({
     backgroundColor: "#f1f5f9",
     marginBottom: 20,
   },
-  confirmBtn: {
+  buttonRow: {
+    flexDirection: "row",
     width: "100%",
-    maxWidth: 220,
+    gap: 12,
+  },
+  btn: {
+    flex: 1,
     paddingVertical: 14,
-    borderRadius: 100,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 4,
+  },
+  cancelBtn: {
+    backgroundColor: "#f1f5f9",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
   confirmText: {
     color: "#fff",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 1.2,
+    letterSpacing: 1,
+  },
+  cancelText: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
   },
 });
 

@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Dimensions,
   Linking,
@@ -26,7 +27,11 @@ const Footer = () => {
   const router = useRouter();
   const slideAnim = useRef(new Animated.Value(20)).current; // Start slightly offset
   const opacityAnim = useRef(new Animated.Value(0)).current;
-
+  const SOCIAL_LINKS = {
+    facebook: "https://facebook.com",
+    instagram: "https://instagram.com",
+    "x-twitter": "https://x.com",
+  };
   const infoData: Record<string, InfoContent> = {
     "About Us": {
       title: "OUR HERITAGE",
@@ -73,7 +78,20 @@ const Footer = () => {
       ]).start();
     }
   }, [selectedInfo]);
+  const handlePress = async (platform: keyof typeof SOCIAL_LINKS) => {
+    const url = SOCIAL_LINKS[platform];
 
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Error", `Don't know how to open this URL: ${url}`);
+      }
+    } catch (error) {
+      console.error("An error occurred", error);
+    }
+  };
   return (
     <View style={styles.container}>
       {selectedInfo && (
@@ -106,8 +124,14 @@ const Footer = () => {
               ENGINEERING THE FUTURE OF PERFORMANCE.
             </Text>
             <View style={styles.socialRow}>
-              {["facebook", "instagram", "x-twitter"].map((icon, i) => (
-                <Pressable key={i} style={styles.socialCircle}>
+              {(
+                Object.keys(SOCIAL_LINKS) as Array<keyof typeof SOCIAL_LINKS>
+              ).map((icon, i) => (
+                <Pressable
+                  key={i}
+                  style={styles.socialCircle}
+                  onPress={() => handlePress(icon)} // 3. Attach the handler
+                >
                   {icon === "x-twitter" ? (
                     <FontAwesome6 name={icon} size={16} color="#AAA" />
                   ) : (
