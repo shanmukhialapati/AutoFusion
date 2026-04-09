@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     marginTop: 50,
     marginBottom: 20,
   },
-  headerIcon: { width: 30, alignItems: "center" }, // Ensures the title stays perfectly centered
+  headerIcon: { width: 30, alignItems: "center" },
   header: {
     color: "#FFF",
     fontSize: 20,

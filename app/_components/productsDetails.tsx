@@ -1,10 +1,11 @@
-import { categoryApi } from "@/axios/axiosInstance"; // Assuming this is your base axios instance
+import { categoryApi } from "@/axios/axiosInstance";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,10 +25,14 @@ export default function ProductsPage() {
 
   const activeCategory = (params.subCategoryName as string) || "";
 
+  // Pagination State
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtering, setFiltering] = useState(false);
-
+  const [page, setPage] = useState(0);
+  const [isLastPage, setIsLastPage] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [brands, setBrands] = useState<string[]>([]);
   const [fuelTypes, setFuelTypes] = useState<string[]>([]);
   const [years, setYears] = useState<number[]>([]);
@@ -38,62 +43,101 @@ export default function ProductsPage() {
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
-
+  const loadInitialData = async () => {
+    try {
+      const brandRes = await categoryApi.get("/vehicles/brands");
+      setBrands(brandRes.data?.brands || brandRes.data || []);
+      await fetchProducts(0);
+    } catch (e) {
+      console.error("Initial load error:", e);
+    }
+  };
+  useFocusEffect(
+    useCallback(() => {
+      loadInitialData();
+    }, [activeCategory]), // Triggers when category changes or screen is focused
+  );
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadInitialData();
+    setRefreshing(false);
+  };
   const fetchProducts = useCallback(
     async (
+      pageNumber: number = 0,
       vBrand?: string,
       vFuel?: string,
       vYear?: string,
       vModel?: string,
     ) => {
-      setFiltering(true);
+      // If we are filtering from scratch (page 0), show full loader
+      if (pageNumber === 0) {
+        setFiltering(true);
+      } else {
+        setLoadingMore(true);
+      }
+
       try {
         let response;
+        const brand = vBrand || selectedBrand;
+        const fuel = vFuel || selectedFuel;
+        const year = vYear || selectedYear;
+        const model = vModel || selectedModel;
 
-        if (vBrand && vFuel && vYear && vModel) {
+        if (brand && fuel && year && model) {
+          // Compatibility Filter Endpoint
           response = await categoryApi.get("/compatibility/filter/products", {
             params: {
-              brand: vBrand,
-              fuelType: vFuel,
-              year: vYear,
-              model: vModel,
-              // subCategoryName: activeCategory
+              brand,
+              fuelType: fuel,
+              year,
+              model,
+              page: pageNumber,
+              size: 20,
             },
           });
         } else {
+          // General Category Endpoint
           response = await categoryApi.get("/products", {
             params: {
               subCategoryName: activeCategory,
-              page: 0,
-              size: 20,
+              page: pageNumber,
+              size: 10,
             },
           });
         }
 
         const data = response.data;
-        // const finalData = data.content || (Array.isArray(data) ? data : []);
-        const finalData =
-          data.products || data.content || (Array.isArray(data) ? data : []);
-        setProducts(finalData);
+        const newProducts =
+          data.content || data.products || (Array.isArray(data) ? data : []);
+
+        // Update products list: Append if not page 0, otherwise replace
+        setProducts((prev) =>
+          pageNumber === 0 ? newProducts : [...prev, ...newProducts],
+        );
+
+        // Set pagination flags (handling different backend response structures)
+        setIsLastPage(data.last ?? newProducts.length < 20);
+        setPage(pageNumber);
       } catch (err) {
         console.error("Product fetch error:", err);
       } finally {
         setFiltering(false);
         setLoading(false);
+        setLoadingMore(false);
       }
     },
-    [activeCategory],
+    [activeCategory, selectedBrand, selectedFuel, selectedYear, selectedModel],
   );
 
+  // Initial load
   useEffect(() => {
     const loadInitialData = async () => {
       setLoading(true);
       try {
         const brandRes = await categoryApi.get("/vehicles/brands");
-        const brandData = brandRes.data;
-        setBrands(brandData?.brands || brandData || []);
-
-        await fetchProducts();
+        setBrands(brandRes.data?.brands || brandRes.data || []);
+        await fetchProducts(0);
       } catch (e) {
         console.error("Initial load error:", e);
       } finally {
@@ -102,7 +146,13 @@ export default function ProductsPage() {
     };
 
     if (activeCategory) loadInitialData();
-  }, [activeCategory, fetchProducts]);
+  }, [activeCategory]); // Removed fetchProducts from dependency to prevent loop
+
+  const handleLoadMore = () => {
+    if (!loadingMore && !isLastPage) {
+      fetchProducts(page + 1);
+    }
+  };
 
   const handleBrandSelect = async (brand: string) => {
     setSelectedBrand(brand);
@@ -112,7 +162,6 @@ export default function ProductsPage() {
     setFuelTypes([]);
     setYears([]);
     setModels([]);
-
     try {
       const res = await categoryApi.get("/compatibility/filter/fuel-types", {
         params: { brand },
@@ -123,13 +172,13 @@ export default function ProductsPage() {
     }
   };
 
+  // Fuel, Year handlers...
   const handleFuelSelect = async (fuel: string) => {
     setSelectedFuel(fuel);
     setSelectedYear("");
     setSelectedModel("");
     setYears([]);
     setModels([]);
-
     try {
       const res = await categoryApi.get("/compatibility/filter/years", {
         params: { brand: selectedBrand, fuelType: fuel },
@@ -144,7 +193,6 @@ export default function ProductsPage() {
     setSelectedYear(year.toString());
     setSelectedModel("");
     setModels([]);
-
     try {
       const res = await categoryApi.get("/compatibility/filter/models", {
         params: { brand: selectedBrand, fuelType: selectedFuel, year },
@@ -154,10 +202,11 @@ export default function ProductsPage() {
       console.error(e);
     }
   };
-  const numColumns = isDesktop ? 4 : isMobile ? 1 : 3;
+
   const handleModelSelect = (model: string) => {
     setSelectedModel(model);
-    fetchProducts(selectedBrand, selectedFuel, selectedYear, model);
+
+    fetchProducts(0, selectedBrand, selectedFuel, selectedYear, model);
   };
 
   const handleReset = () => {
@@ -168,11 +217,14 @@ export default function ProductsPage() {
     setFuelTypes([]);
     setYears([]);
     setModels([]);
-    fetchProducts();
+    fetchProducts(0, "", "", "", "");
   };
+
+  const numColumns = isDesktop ? 4 : isMobile ? 2 : 3;
 
   return (
     <View style={styles.container}>
+      {/* Header logic remains same */}
       <View style={styles.header}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity
@@ -181,13 +233,11 @@ export default function ProductsPage() {
           >
             <Ionicons name="chevron-back" size={24} />
           </TouchableOpacity>
-
           <View>
             <Text style={styles.subTitle}>Browsing</Text>
             <Text style={styles.title}>{activeCategory.toUpperCase()}</Text>
           </View>
         </View>
-
         {!isDesktop && (
           <TouchableOpacity
             style={styles.filterBtn}
@@ -201,6 +251,7 @@ export default function ProductsPage() {
       <View
         style={[styles.mainLayout, !isDesktop && { flexDirection: "column" }]}
       >
+        {/* Sidebar Logic remains same */}
         {isDesktop && (
           <View style={styles.sidebar}>
             <View style={styles.sidebarHeader}>
@@ -209,47 +260,35 @@ export default function ProductsPage() {
                 <Text style={styles.resetText}>Reset</Text>
               </TouchableOpacity>
             </View>
-
-            <ScrollView
-              horizontal={!isDesktop}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: isDesktop ? 20 : 0 }}
-            >
-              <View
-                style={{
-                  flexDirection: !isDesktop ? "row" : "column",
-                  gap: 15,
-                }}
-              >
-                <FilterStep
-                  title="1. Brand"
-                  options={brands}
-                  selected={selectedBrand}
-                  onSelect={handleBrandSelect}
-                  enabled
-                />
-                <FilterStep
-                  title="2. Fuel"
-                  options={fuelTypes}
-                  selected={selectedFuel}
-                  onSelect={handleFuelSelect}
-                  enabled={!!selectedBrand}
-                />
-                <FilterStep
-                  title="3. Year"
-                  options={years}
-                  selected={selectedYear}
-                  onSelect={handleYearSelect}
-                  enabled={!!selectedFuel}
-                />
-                <FilterStep
-                  title="4. Model"
-                  options={models}
-                  selected={selectedModel}
-                  onSelect={handleModelSelect}
-                  enabled={!!selectedYear}
-                />
-              </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <FilterStep
+                title="1. Brand"
+                options={brands}
+                selected={selectedBrand}
+                onSelect={handleBrandSelect}
+                enabled
+              />
+              <FilterStep
+                title="2. Fuel"
+                options={fuelTypes}
+                selected={selectedFuel}
+                onSelect={handleFuelSelect}
+                enabled={!!selectedBrand}
+              />
+              <FilterStep
+                title="3. Year"
+                options={years}
+                selected={selectedYear}
+                onSelect={handleYearSelect}
+                enabled={!!selectedFuel}
+              />
+              <FilterStep
+                title="4. Model"
+                options={models}
+                selected={selectedModel}
+                onSelect={handleModelSelect}
+                enabled={!!selectedYear}
+              />
             </ScrollView>
           </View>
         )}
@@ -259,7 +298,15 @@ export default function ProductsPage() {
             data={products}
             key={numColumns}
             numColumns={numColumns}
-            keyExtractor={(item) => item.id?.toString()}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#F2A20C"
+                colors={["#F2A20C"]}
+              />
+            }
             renderItem={({ item }) => (
               <Animated.View
                 entering={FadeIn}
@@ -297,8 +344,19 @@ export default function ProductsPage() {
                 />
               </Animated.View>
             )}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={() =>
+              loadingMore ? (
+                <ActivityIndicator
+                  size="small"
+                  color="#F2A20C"
+                  style={{ marginVertical: 20 }}
+                />
+              ) : null
+            }
             ListEmptyComponent={
-              !loading ? (
+              !loading && !filtering ? (
                 <View style={styles.emptyContainer}>
                   <Text>No products found for this selection.</Text>
                 </View>

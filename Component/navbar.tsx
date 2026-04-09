@@ -29,9 +29,7 @@ import PremiumAlert from "../app/_components/PremiumAlert";
 import { useAuth } from "../Context/authcontext";
 import { useNotifications } from "../Context/notificationContext";
 import NotificationDrawer from "./NotificationDrawer";
-
-type AlertType = "success" | "warning" | "error";
-
+type AlertType = "success" | "warning" | "error" | "confirm";
 const SearchBar = React.memo(
   ({
     selectedBrand,
@@ -46,13 +44,18 @@ const SearchBar = React.memo(
     const [suggestions, setSuggestions] = useState<any[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
 
+    // Function to close everything
+    const closeAllDropdowns = () => {
+      setShowBrandDropdown(false);
+      setShowSuggestions(false);
+    };
+
     useEffect(() => {
       const delay = setTimeout(async () => {
         if (!searchQuery.trim()) {
           setSuggestions([]);
           return;
         }
-
         try {
           const res = await fetch(
             `http://192.168.0.157:8080/api/products/search?q=${searchQuery}`,
@@ -69,11 +72,22 @@ const SearchBar = React.memo(
     }, [searchQuery]);
 
     return (
-      <View style={{ position: "relative" }}>
+      <View style={{ zIndex: 100 }}>
+        {/* Transparent Backdrop: Only shows when a dropdown is active */}
+        {(showBrandDropdown || (showSuggestions && suggestions.length > 0)) && (
+          <Pressable
+            style={styles.fullScreenOverlay}
+            onPress={closeAllDropdowns}
+          />
+        )}
+
         <View style={styles.combinedSearchContainer}>
           <TouchableOpacity
             style={styles.brandSelector}
-            onPress={() => setShowBrandDropdown(!showBrandDropdown)}
+            onPress={() => {
+              setShowBrandDropdown(!showBrandDropdown);
+              setShowSuggestions(false); // Close suggestions if brand is clicked
+            }}
           >
             <Text style={styles.brandSelectorText} numberOfLines={1}>
               {selectedBrand ? selectedBrand.name.toUpperCase() : "ALL BRANDS"}
@@ -104,6 +118,7 @@ const SearchBar = React.memo(
           </TouchableOpacity>
         </View>
 
+        {/* Brand Dropdown */}
         {showBrandDropdown && (
           <View style={styles.dropdownOverlay}>
             <FlatList
@@ -129,6 +144,7 @@ const SearchBar = React.memo(
           </View>
         )}
 
+        {/* Suggestion Box */}
         {showSuggestions && suggestions.length > 0 && (
           <View style={styles.suggestionBox}>
             <FlatList
@@ -142,7 +158,7 @@ const SearchBar = React.memo(
                   onPress={() => {
                     setSearchQuery(item.name);
                     setShowSuggestions(false);
-                    handleSearchSubmit();
+                    handleSearchSubmit(item.name);
                   }}
                 >
                   <Text style={styles.suggestionText}>{item.name}</Text>
@@ -155,7 +171,6 @@ const SearchBar = React.memo(
     );
   },
 );
-
 interface NavbarProps {
   title?: string;
   onMenuPress?: () => void;
@@ -164,7 +179,6 @@ interface NavbarProps {
   onProfilePress?: () => void;
   isScrolled?: boolean;
 }
-
 const Navbar = ({ onNotificationsPress }: NavbarProps) => {
   const router = useRouter();
   const { user, setAuth } = useAuth();
@@ -184,6 +198,7 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
     type: AlertType;
     title: string;
     message: string;
+    onConfirm?: () => void;
   }>({
     visible: false,
     type: "success",
@@ -191,17 +206,37 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
     message: "",
   });
 
-  const showAlert = (type: AlertType, title: string, message: string) => {
-    setAlertConfig({ visible: true, type, title, message });
+  const showAlert = (
+    type: AlertType | "confirm",
+    title: string,
+    message: string,
+    onConfirm?: () => void,
+  ) => {
+    setAlertConfig({
+      visible: true,
+      type,
+      title,
+      message,
+      onConfirm,
+    });
   };
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-
-  const handleLogout = async () => {
+  const handleLogoutAction = async () => {
     await setAuth(null);
     setIsMenuOpen(false);
+    setAlertConfig((prev) => ({ ...prev, visible: false })); // Close alert
     router.replace("/login");
   };
 
+  const triggerLogoutConfirm = () => {
+    setIsMenuOpen(false); // Close the account menu first
+    showAlert(
+      "confirm",
+      "Sign Out",
+      "Are you sure you want to log out of Autofusion?",
+      handleLogoutAction,
+    );
+  };
   useEffect(() => {
     const fetchBrands = async () => {
       try {
@@ -227,6 +262,8 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
   }, []);
 
   const handleSearchSubmit = (overrideQuery?: string) => {
+    // const finalQuery = (overrideQuery || searchQuery).trim();
+
     if (!overrideQuery && !selectedBrand) return;
     router.push({
       pathname: "../app/_components/productsDetails",
@@ -281,7 +318,10 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
             <Bell color="white" size={24} />
             {unreadCount > 0 && (
               <View style={styles.badgeContainer}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
+                <Text style={styles.badgeText}>
+                  {/* {unreadCount > 9 ? "9+" : unreadCount} */}
+                  {unreadCount}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -378,7 +418,10 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
               <MapPin color="#FFF" size={20} />
               <Text style={styles.menuText}>ADDRESS</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={triggerLogoutConfirm}
+            >
               <LogOut color="#FF453A" size={20} />
               <Text style={[styles.menuText, { color: "#FF453A" }]}>
                 LOGOUT
@@ -389,10 +432,12 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
       </Modal>
       <PremiumAlert
         visible={alertConfig.visible}
-        type={alertConfig.type}
+        type={alertConfig.type as any}
         title={alertConfig.title}
         message={alertConfig.message}
+        confirmText={alertConfig.type === "confirm" ? "LOGOUT" : "OK"}
         onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
+        onConfirm={alertConfig.onConfirm} // Pass the dynamic confirm action
       />
     </View>
   );
@@ -503,13 +548,43 @@ const styles = StyleSheet.create({
     paddingTop: 80,
     paddingRight: 20,
   },
-  dropdownContent: {
+  fullScreenOverlay: {
+    position: "fixed", // For Web
+    // @ts-ignore
+    position: Platform.OS === "web" ? "fixed" : "absolute",
+    top: -500, // Large enough to cover header area
+    left: -500,
+    right: -500,
+    bottom: -1000,
+    width: 5000, // Ensure it covers the whole screen
+    height: 5000,
+    backgroundColor: "transparent",
+    zIndex: 5, // Lower than dropdowns but higher than page content
+  },
+
+  // Ensure these have a higher zIndex than fullScreenOverlay
+  dropdownOverlay: {
+    position: "absolute",
+    top: 50,
+    left: 0,
     width: 200,
-    backgroundColor: "#222",
-    borderRadius: 4,
-    borderWidth: 2,
+    backgroundColor: "#1E1E1E",
+    borderRadius: 6,
+    borderWidth: 1,
     borderColor: "#F2A20C",
-    padding: 15,
+    zIndex: 9999, // High
+    elevation: 20,
+  },
+  suggestionBox: {
+    position: "absolute",
+    top: 50,
+    left: 110,
+    right: 0,
+    backgroundColor: "#1E1E1E",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#444",
+    zIndex: 9999, // High
   },
   dropdownHeader: {
     flexDirection: "row",
@@ -528,30 +603,38 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   menuText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
-  dropdownOverlay: {
-    position: "absolute",
-    top: 50,
-    left: 0,
+  dropdownContent: {
     width: 200,
-    backgroundColor: "#1E1E1E",
-    borderRadius: 6,
-    borderWidth: 1,
+    backgroundColor: "#222",
+    borderRadius: 4,
+    borderWidth: 2,
     borderColor: "#F2A20C",
-    zIndex: 9999,
-    elevation: 20,
+    padding: 15,
   },
+  // dropdownOverlay: {
+  //   position: "absolute",
+  //   top: 50,
+  //   left: 0,
+  //   width: 200,
+  //   backgroundColor: "#1E1E1E",
+  //   borderRadius: 6,
+  //   borderWidth: 1,
+  //   borderColor: "#F2A20C",
+  //   zIndex: 9999,
+  //   elevation: 20,
+  // },
 
-  suggestionBox: {
-    position: "absolute",
-    top: 50,
-    left: 110, // after brand selector
-    right: 0,
-    backgroundColor: "#1E1E1E",
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#444",
-    zIndex: 9999,
-  },
+  // suggestionBox: {
+  //   position: "absolute",
+  //   top: 50,
+  //   left: 110, // after brand selector
+  //   right: 0,
+  //   backgroundColor: "#1E1E1E",
+  //   borderRadius: 6,
+  //   borderWidth: 1,
+  //   borderColor: "#444",
+  //   zIndex: 9999,
+  // },
 
   suggestionItem: {
     padding: 12,
