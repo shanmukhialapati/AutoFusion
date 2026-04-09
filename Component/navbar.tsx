@@ -29,7 +29,9 @@ import PremiumAlert from "../app/_components/PremiumAlert";
 import { useAuth } from "../Context/authcontext";
 import { useNotifications } from "../Context/notificationContext";
 import NotificationDrawer from "./NotificationDrawer";
+
 type AlertType = "success" | "warning" | "error";
+
 const SearchBar = React.memo(
   ({
     selectedBrand,
@@ -153,6 +155,7 @@ const SearchBar = React.memo(
     );
   },
 );
+
 interface NavbarProps {
   title?: string;
   onMenuPress?: () => void;
@@ -161,6 +164,7 @@ interface NavbarProps {
   onProfilePress?: () => void;
   isScrolled?: boolean;
 }
+
 const Navbar = ({ onNotificationsPress }: NavbarProps) => {
   const router = useRouter();
   const { user, setAuth } = useAuth();
@@ -191,11 +195,13 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
     setAlertConfig({ visible: true, type, title, message });
   };
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
   const handleLogout = async () => {
     await setAuth(null);
     setIsMenuOpen(false);
     router.replace("/login");
   };
+
   useEffect(() => {
     const fetchBrands = async () => {
       try {
@@ -221,8 +227,6 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
   }, []);
 
   const handleSearchSubmit = (overrideQuery?: string) => {
-    // const finalQuery = (overrideQuery || searchQuery).trim();
-
     if (!overrideQuery && !selectedBrand) return;
     router.push({
       pathname: "../app/_components/productsDetails",
@@ -277,10 +281,7 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
             <Bell color="white" size={24} />
             {unreadCount > 0 && (
               <View style={styles.badgeContainer}>
-                <Text style={styles.badgeText}>
-                  {/* {unreadCount > 9 ? "9+" : unreadCount} */}
-                  {unreadCount}
-                </Text>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -327,34 +328,52 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
                 <X color="#F2A20C" size={24} />
               </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.menuItem}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push("/changepass");
+              }}
+            >
               <User color="#FFF" size={20} />
-              <Text style={styles.menuText}>MY PROFILE</Text>
+              <Text style={styles.menuText}>CHANGE PASSWORD</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => router.push("/wishlist")}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push("/wishlist");
+              }}
             >
               <Heart color="#FFF" size={20} />
               <Text style={styles.menuText}>WISHLIST</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => router.push("/cart")}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push("/cart");
+              }}
             >
               <ShoppingCart color="#FFF" size={20} />
               <Text style={styles.menuText}>CART</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => router.push("/orders")}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push("/orders");
+              }}
             >
               <Package color="#FFF" size={20} />
               <Text style={styles.menuText}>ORDER HISTORY</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => router.push("/address")}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push("/address");
+              }}
             >
               <MapPin color="#FFF" size={20} />
               <Text style={styles.menuText}>ADDRESS</Text>

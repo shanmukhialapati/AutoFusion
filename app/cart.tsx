@@ -21,15 +21,15 @@ import {
 } from "react-native";
 import { orderApi } from "../axios/axiosInstance";
 
-// 1. Updated Interfaces
+// 1. Updated Interfaces to perfectly match your JSON response
 interface CartItem {
   id: number;
-  pid: number;
-  uid: string;
+  productId: number; // 🔹 Updated from pid to match JSON
+  uid?: string;
   pname: string;
-  actualPrice: number;
+  unitPrice: number;
   discount: number;
-  price: number;
+  totalPrice: number;
   quantity: number;
 }
 
@@ -52,16 +52,13 @@ const CartPage = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Hardcoded UID (Replace with your AuthContext user ID later)
-  const USER_ID = "8430c82d-a2c5-4eae-8ad8-d317ab029272";
-
   useEffect(() => {
     fetchCart();
   }, []);
 
   const fetchCart = async () => {
     try {
-      const response = await orderApi.get(`/orders/cart/${USER_ID}`);
+      const response = await orderApi.get(`/orders/cart`);
       const data: CartResponse = response.data;
 
       // Extract the new object structure into our state
@@ -84,6 +81,14 @@ const CartPage = () => {
 
   const updateQuantity = async (cartItemId: number, newQty: number) => {
     if (newQty < 1) return;
+
+    // 🔹 Find the targeted item so we can grab its productId for the payload
+    const itemToUpdate = cartItems.find((item) => item.id === cartItemId);
+    if (!itemToUpdate) return;
+
+    // 🔹 Calculate the difference (will be 1 for Plus, -1 for Minus)
+    const change = newQty - itemToUpdate.quantity;
+
     try {
       // Optimistically update UI so the number changes instantly
       setCartItems((prev) =>
@@ -92,8 +97,10 @@ const CartPage = () => {
         ),
       );
 
-      // Replace with your actual update endpoint
-      // await orderApi.put(`/orders/cart/update/${cartItemId}`, { quantity: newQty });
+      // 🔹 ACTUAL UPDATE API CALL using PATCH with query parameter
+      await orderApi.patch(
+        `/orders/cart/update/${itemToUpdate.id}?change=${change}`,
+      );
 
       // Refresh to get the newly calculated grandTotals from the server
       fetchCart();
@@ -129,6 +136,34 @@ const CartPage = () => {
     }
   };
 
+  // 🔹 NEW LOGIC: Clear entirely cart
+  const clearCart = () => {
+    const action = async () => {
+      // Optimistic clear UI
+      setCartItems([]);
+      setSubTotal(0);
+      setDeliveryCharge(0);
+      setGrandTotal(0);
+
+      try {
+        await orderApi.delete(`/orders/cart/clear`);
+        fetchCart(); // Fetch to sync with server
+      } catch (error) {
+        Alert.alert("Error", "Could not clear cart");
+        fetchCart(); // Revert back on error
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm("Clear your entire cart?")) action();
+    } else {
+      Alert.alert("Clear Cart", "Are you sure you want to clear all items?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Clear All", style: "destructive", onPress: action },
+      ]);
+    }
+  };
+
   const renderCartItem = ({ item }: { item: CartItem }) => (
     <View style={styles.card}>
       <Image
@@ -141,10 +176,12 @@ const CartPage = () => {
         <Text style={styles.itemName}>{item.pname}</Text>
 
         <View style={styles.priceRow}>
-          <Text style={styles.itemPrice}>₹{item.price.toLocaleString()}</Text>
+          <Text style={styles.itemPrice}>
+            ₹{item.totalPrice.toLocaleString()}
+          </Text>
           {item.discount > 0 && (
             <Text style={styles.actualPrice}>
-              ₹{item.actualPrice.toLocaleString()}
+              ₹{item.unitPrice.toLocaleString()}
             </Text>
           )}
         </View>
@@ -184,7 +221,21 @@ const CartPage = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>SHOPPING CART</Text>
+      {/* 🔹 Added inline view to hold the title and clear button side-by-side */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Text style={styles.header}>SHOPPING CART</Text>
+        {cartItems.length > 0 && (
+          <TouchableOpacity onPress={clearCart}>
+            <Trash2 size={24} color="#FF453A" />
+          </TouchableOpacity>
+        )}
+      </View>
 
       <FlatList
         data={cartItems}
@@ -248,7 +299,18 @@ const CartPage = () => {
             </Text>
           </View>
 
-          <TouchableOpacity style={styles.checkoutBtn}>
+          <TouchableOpacity
+            style={styles.checkoutBtn}
+            // 🔹 MODIFIED: Pass the item IDs to the checkout page as a comma-separated string
+            onPress={() =>
+              router.push({
+                pathname: "/checkout",
+                params: {
+                  orderItemIds: cartItems.map((item) => item.id).join(","),
+                },
+              })
+            }
+          >
             <Text style={styles.checkoutText}>PROCEED TO CHECKOUT</Text>
             <ChevronRight size={20} color="#1A1A1A" />
           </TouchableOpacity>
