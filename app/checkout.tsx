@@ -660,7 +660,6 @@ const CheckoutPage = () => {
   );
 };
 
-// ... Styles remain identical below
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -1,18 +1,18 @@
 import { Edit2, MapPin, Plus, Trash2, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    Platform,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import axiosInstance from "../axios/axiosInstance";
 
@@ -193,7 +193,7 @@ const AddressPage = () => {
           onPress={() => openEdit(item)}
           style={styles.actionBtn}
         >
-          <Edit2 size={16} color="#AAA" />
+          <Edit2 size={16} color="#888" />
           <Text style={styles.actionText}>EDIT</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -218,7 +218,7 @@ const AddressPage = () => {
             setModalVisible(true);
           }}
         >
-          <Plus color="#1A1A1A" size={20} />
+          <Plus color="#F2A20C" size={18} />
           <Text style={styles.addButtonText}>ADD NEW</Text>
         </TouchableOpacity>
       </View>
@@ -235,6 +235,7 @@ const AddressPage = () => {
           keyExtractor={(item) => item.id!}
           renderItem={renderAddressItem}
           contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -257,20 +258,20 @@ const AddressPage = () => {
                 {editingId ? "EDIT ADDRESS" : "NEW ADDRESS"}
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X color="#FFF" size={24} />
+                <X color="#1A1A1A" size={24} />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
               <TextInput
                 placeholder="FULL NAME"
-                placeholderTextColor="#666"
+                placeholderTextColor="#888"
                 style={styles.input}
                 value={form.fullName}
                 onChangeText={(t) => setForm({ ...form, fullName: t })}
               />
               <TextInput
                 placeholder="PHONE NUMBER"
-                placeholderTextColor="#666"
+                placeholderTextColor="#888"
                 style={styles.input}
                 keyboardType="phone-pad"
                 maxLength={10}
@@ -281,7 +282,7 @@ const AddressPage = () => {
               />
               <TextInput
                 placeholder="STREET / HOUSE NO"
-                placeholderTextColor="#666"
+                placeholderTextColor="#888"
                 style={styles.input}
                 value={form.street}
                 onChangeText={(t) => setForm({ ...form, street: t })}
@@ -289,14 +290,14 @@ const AddressPage = () => {
               <View style={styles.row}>
                 <TextInput
                   placeholder="CITY"
-                  placeholderTextColor="#666"
+                  placeholderTextColor="#888"
                   style={[styles.input, { flex: 1, marginRight: 10 }]}
                   value={form.city}
                   onChangeText={(t) => setForm({ ...form, city: t })}
                 />
                 <TextInput
                   placeholder="PIN"
-                  placeholderTextColor="#666"
+                  placeholderTextColor="#888"
                   style={[styles.input, { flex: 1 }]}
                   keyboardType="number-pad"
                   maxLength={6}
@@ -308,7 +309,7 @@ const AddressPage = () => {
               </View>
               <TextInput
                 placeholder="STATE"
-                placeholderTextColor="#666"
+                placeholderTextColor="#888"
                 style={styles.input}
                 value={form.state}
                 onChangeText={(t) => setForm({ ...form, state: t })}
@@ -325,97 +326,162 @@ const AddressPage = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#1A1A1A", padding: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: "#F8F9FA",
+    padding: 20,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 25,
-    marginTop: 40,
+    marginTop: Platform.OS === "ios" ? 50 : 30, // Adjusted slightly for light theme spacing
   },
-  title: { color: "#FFF", fontSize: 22, fontWeight: "900", letterSpacing: 1 },
+  title: {
+    color: "#1A1A1A",
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
   addButton: {
     flexDirection: "row",
-    backgroundColor: "#F2A20C",
-    paddingHorizontal: 15,
+    backgroundColor: "#FFF8F0",
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 4,
-    alignItems: "center",
-    gap: 5,
-  },
-  addButtonText: { color: "#1A1A1A", fontWeight: "800", fontSize: 12 },
-  listContent: { paddingBottom: 20 },
-  addressCard: {
-    backgroundColor: "#262626",
-    padding: 15,
     borderRadius: 8,
-    marginBottom: 15,
+    alignItems: "center",
+    gap: 4,
+  },
+  addButtonText: {
+    color: "#F2A20C",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  listContent: {
+    paddingBottom: 40,
+  },
+  addressCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#E5E5E5",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 10,
   },
-  row: { flexDirection: "row", alignItems: "center", gap: 8 },
-  nameText: { color: "#FFF", fontWeight: "700", fontSize: 16 },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  nameText: {
+    color: "#1A1A1A",
+    fontWeight: "800",
+    fontSize: 16,
+  },
   defaultBadge: {
     color: "#F2A20C",
     fontSize: 10,
-    fontWeight: "800",
+    fontWeight: "900",
     borderWidth: 1,
-    borderColor: "#F2A20C",
-    paddingHorizontal: 5,
-    borderRadius: 2,
+    borderColor: "rgba(242, 162, 12, 0.3)",
+    backgroundColor: "#FFF8F0",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+    overflow: "hidden",
   },
-  addressText: { color: "#AAA", fontSize: 14, marginBottom: 2 },
+  addressText: {
+    color: "#666",
+    fontSize: 14,
+    marginBottom: 4,
+    lineHeight: 20,
+  },
   actionRow: {
     flexDirection: "row",
     marginTop: 15,
     paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: "#333",
+    borderTopColor: "#F0F0F0",
     gap: 20,
   },
-  actionBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
-  actionText: { color: "#AAA", fontSize: 12, fontWeight: "700" },
-  emptyText: { color: "#666", textAlign: "center", marginTop: 50 },
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  actionText: {
+    color: "#888",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  emptyText: {
+    color: "#888",
+    textAlign: "center",
+    marginTop: 50,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
+    backgroundColor: "rgba(0,0,0,0.6)", // Lighter overlay
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#1A1A1A",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    height: "80%",
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    height: "85%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
+    elevation: 20,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
   },
-  modalTitle: { color: "#F2A20C", fontSize: 18, fontWeight: "900" },
+  modalTitle: {
+    color: "#1A1A1A",
+    fontSize: 18,
+    fontWeight: "900",
+  },
   input: {
-    backgroundColor: "#262626",
-    color: "#FFF",
-    padding: 15,
-    borderRadius: 4,
-    marginBottom: 15,
+    backgroundColor: "#F8F9FA",
+    color: "#1A1A1A",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#444",
+    borderColor: "#E5E5E5",
+    fontSize: 15,
   },
   saveButton: {
     backgroundColor: "#F2A20C",
     padding: 18,
-    borderRadius: 4,
+    borderRadius: 12,
     alignItems: "center",
     marginTop: 10,
+    marginBottom: 20,
   },
-  saveButtonText: { color: "#1A1A1A", fontWeight: "900", letterSpacing: 1 },
+  saveButtonText: {
+    color: "#1A1A1A",
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
 });
 
 export default AddressPage;

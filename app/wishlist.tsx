@@ -1,6 +1,6 @@
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { ArrowLeft, Heart, ShoppingCart, Trash2 } from "lucide-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,11 +14,17 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-// 🔹 Import your specific APIs
-import { cartApi, wishlistApi } from "../axios/axiosInstance";
+// 🔹 FIX: Imported orderApi to handle the specific bag/add endpoint
+import { orderApi, wishlistApi } from "../axios/axiosInstance";
 
 const { width } = Dimensions.get("window");
-const COLUMN_WIDTH = (width - 60) / 2;
+
+// 🔹 FIX: Determine columns based on platform
+const numColumns = Platform.OS === "web" ? 4 : 2;
+// Mobile (2 cols): 40px padding + 1 gap (20px) = 60px subtracted
+// Web (4 cols): 40px padding + 3 gaps (20px each) = 100px subtracted
+const COLUMN_WIDTH =
+  Platform.OS === "web" ? (width - 100) / 4 : (width - 60) / 2;
 
 // 1. Updated Interface to match your new JSON response
 interface WishlistItem {
@@ -37,9 +43,11 @@ const WishlistPage = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
 
-  useEffect(() => {
-    fetchWishlist();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchWishlist();
+    }, []),
+  );
 
   const fetchWishlist = async () => {
     try {
@@ -97,12 +105,13 @@ const WishlistPage = () => {
     }
   };
 
+  // 🔹 FIX: Updated API endpoint and instance
   const addToCart = async (productId: number) => {
     try {
-      // Assuming you use the cartApi for this endpoint
-      await cartApi.post("/cart/add", {
+      // Pointing to your specific endpoint: /api/orders/bag/add
+      await orderApi.post("/orders/bag/add", {
         productId: productId,
-        quantity: 1,
+        quantity: 1, // Assumed standard payload, adjust if your API requires different keys
       });
       if (Platform.OS === "web") {
         alert("Added to Cart!");
@@ -110,6 +119,7 @@ const WishlistPage = () => {
         Alert.alert("Success", "Added to your cart!");
       }
     } catch (error) {
+      console.error("Error adding to bag:", error);
       Alert.alert("Error", "Failed to add to cart");
     }
   };
@@ -170,20 +180,22 @@ const WishlistPage = () => {
       <View style={styles.headerRow}>
         <TouchableOpacity
           onPress={() => router.back()}
-          style={styles.headerIcon}
+          style={styles.headerIconBtn}
         >
-          <ArrowLeft color="#FFF" size={24} />
+          <ArrowLeft color="#F2A20C" size={24} />
         </TouchableOpacity>
 
         <Text style={styles.header}>MY WISHLIST ({wishlist.length})</Text>
 
         {/* Clear Wishlist Button (Only shows if there are items) */}
-        <View style={styles.headerIcon}>
+        <View style={styles.headerRightAction}>
           {wishlist.length > 0 ? (
-            <TouchableOpacity onPress={clearWishlist}>
+            <TouchableOpacity onPress={clearWishlist} style={styles.clearBtn}>
               <Trash2 color="#FF453A" size={22} />
             </TouchableOpacity>
-          ) : null}
+          ) : (
+            <View style={{ width: 44 }} /> /* Spacer to keep header centered */
+          )}
         </View>
       </View>
 
@@ -191,9 +203,11 @@ const WishlistPage = () => {
         data={wishlist}
         renderItem={renderWishlistItem}
         keyExtractor={(item) => item.id.toString()}
-        numColumns={2}
+        numColumns={numColumns} // 🔹 FIX: Set to dynamic variable
+        key={numColumns} // 🔹 FIX: Required by RN when columns change
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -204,7 +218,7 @@ const WishlistPage = () => {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Heart size={60} color="#333" strokeWidth={1.5} />
+            <Heart size={60} color="#E0E0E0" strokeWidth={1.5} />
             <Text style={styles.emptyText}>Your wishlist is empty</Text>
             <TouchableOpacity
               style={styles.shopBtn}
@@ -220,48 +234,105 @@ const WishlistPage = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#1A1A1A" },
+  container: {
+    flex: 1,
+    backgroundColor: "#F8F9FA", // Light background matching Checkout
+  },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    marginTop: 50,
-    marginBottom: 20,
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingBottom: 16,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+    marginBottom: 16,
   },
-  headerIcon: { width: 30, alignItems: "center" },
+  headerIconBtn: {
+    padding: 10,
+    backgroundColor: "#FFF8F0",
+    borderRadius: 12,
+  },
+  headerRightAction: {
+    width: 44, // Matches the spacing geometry of the back button for a centered title
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  clearBtn: {
+    padding: 10,
+    backgroundColor: "#FFF0F0", // Soft red background for destruct action
+    borderRadius: 12,
+  },
   header: {
-    color: "#FFF",
+    color: "#1A1A1A",
     fontSize: 20,
     fontWeight: "900",
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  listContainer: { paddingHorizontal: 20, paddingBottom: 40, flexGrow: 1 },
-  columnWrapper: { justifyContent: "space-between" },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F8F9FA",
+  },
+  listContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    flexGrow: 1,
+  },
+  columnWrapper: {
+    justifyContent: "flex-start", // 🔹 FIX: Prevents items from spacing out to edges
+    gap: 20, // 🔹 FIX: Ensures an exact 20px gap between all items
+  },
   card: {
-    backgroundColor: "#262626",
+    backgroundColor: "#FFFFFF", // White cards
     width: COLUMN_WIDTH,
-    borderRadius: 12,
+    borderRadius: 16, // Smoother corners like Checkout
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#E5E5E5",
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  imageWrapper: { position: "relative", backgroundColor: "#333" },
-  image: { width: "100%", height: 140, resizeMode: "cover" },
+  imageWrapper: {
+    position: "relative",
+    backgroundColor: "#F8F9FA", // Light image background
+  },
+  image: {
+    width: "100%",
+    height: 140,
+    resizeMode: "cover",
+  },
   removeIcon: {
     position: "absolute",
     top: 8,
     right: 8,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    padding: 6,
+    backgroundColor: "#FFFFFF", // White background for visibility
+    padding: 8,
     borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
-  infoContainer: { padding: 12 },
-  itemName: { color: "#FFF", fontSize: 14, fontWeight: "700", marginBottom: 4 },
+  infoContainer: {
+    padding: 12,
+  },
+  itemName: {
+    color: "#1A1A1A", // Dark text
+    fontSize: 14,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
   itemPrice: {
-    color: "#F2A20C",
+    color: "#F2A20C", // Keep accent color for price
     fontSize: 16,
     fontWeight: "800",
     marginBottom: 12,
@@ -272,20 +343,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 10,
-    borderRadius: 6,
+    borderRadius: 8,
     gap: 6,
   },
-  cartBtnText: { color: "#1A1A1A", fontSize: 12, fontWeight: "900" },
-  emptyContainer: { alignItems: "center", marginTop: 100 },
-  emptyText: { color: "#666", fontSize: 16, marginTop: 20, marginBottom: 30 },
+  cartBtnText: {
+    color: "#1A1A1A",
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    marginTop: 100,
+  },
+  emptyText: {
+    color: "#888", // Soft gray
+    fontSize: 15,
+    marginTop: 20,
+    marginBottom: 30,
+  },
   shopBtn: {
+    backgroundColor: "#FFF8F0",
     borderWidth: 1,
-    borderColor: "#F2A20C",
+    borderColor: "rgba(242, 162, 12, 0.3)",
     paddingHorizontal: 25,
     paddingVertical: 12,
-    borderRadius: 4,
+    borderRadius: 12,
   },
-  shopBtnText: { color: "#F2A20C", fontWeight: "700", letterSpacing: 1 },
+  shopBtnText: {
+    color: "#F2A20C",
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
 });
 
 export default WishlistPage;
