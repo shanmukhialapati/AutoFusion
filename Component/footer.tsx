@@ -32,22 +32,6 @@ const Footer = () => {
     instagram: "https://instagram.com",
     "x-twitter": "https://x.com",
   };
-  const infoData: Record<string, InfoContent> = {
-    "About Us": {
-      title: "OUR HERITAGE",
-      content:
-        "AUTOFUSION started in a small garage with one goal: precision performance parts.",
-    },
-    Support: {
-      title: "24/7 TECHNICAL HELP",
-      content:
-        "Our master mechanics are available via live chat to help with your build.",
-    },
-    "Contact Us": {
-      title: "GET IN TOUCH",
-      content: "Email: support@autofusion.com | Phone: 1-800-AUTO-FUSE",
-    },
-  };
 
   useEffect(() => {
     if (selectedInfo) {
@@ -145,7 +129,7 @@ const Footer = () => {
           <View style={styles.linksContainer}>
             <View style={styles.linkCol}>
               <Text style={styles.header}>SHOP</Text>
-              {["Home", "Cart", "Wishlist", "Address"].map((label) => (
+              {["Home", "Cart", "Wishlist"].map((label) => (
                 <Pressable
                   key={label}
                   style={styles.linkPress}
@@ -165,12 +149,22 @@ const Footer = () => {
             </View>
 
             <View style={styles.linkCol}>
-              <Text style={styles.header}>COMPANY</Text>
-              {["About Us", "Support", "Contact Us"].map((label) => (
+              <Text style={styles.header}>Profile</Text>
+              {["Orders", "Address", "Change Password"].map((label) => (
                 <Pressable
                   key={label}
                   style={styles.linkPress}
-                  onPress={() => setSelectedInfo(infoData[label])}
+                  onPress={() => {
+                    if (label === "Orders") {
+                      router.push("/orders");
+                    } else if (label === "Address") {
+                      router.push("/address");
+                    } else if (label === "Change Password") {
+                      router.push("/changepass");
+                    } else {
+                      router.push(`/${label.toLowerCase()}` as any);
+                    }
+                  }}
                 >
                   <Text style={styles.linkText}>{label}</Text>
                 </Pressable>

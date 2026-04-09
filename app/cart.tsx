@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import {
   ChevronRight,
   Minus,
+  Package,
   Plus,
   ShoppingBag,
   Trash2,
@@ -11,7 +12,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   Platform,
   RefreshControl,
   StyleSheet,
@@ -21,16 +21,16 @@ import {
 } from "react-native";
 import { orderApi } from "../axios/axiosInstance";
 
-// 1. Updated Interfaces to perfectly match your JSON response
 interface CartItem {
   id: number;
-  productId: number; // 🔹 Updated from pid to match JSON
-  uid?: string;
+  productId: number;
   pname: string;
-  unitPrice: number;
+  actualPrice: number;
   discount: number;
-  totalPrice: number;
+  price: number;
   quantity: number;
+  unitPrice: number;
+  totalPrice: number;
 }
 
 interface CartResponse {
@@ -40,10 +40,17 @@ interface CartResponse {
   grandTotal: number;
 }
 
+// Helper to handle JS float precision issues
+const formatPrice = (price: number) => {
+  return Number(price).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
 const CartPage = () => {
   const router = useRouter();
 
-  // 2. Updated State to hold the new totals
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [subTotal, setSubTotal] = useState(0);
   const [deliveryCharge, setDeliveryCharge] = useState(0);
@@ -61,7 +68,6 @@ const CartPage = () => {
       const response = await orderApi.get(`/orders/cart`);
       const data: CartResponse = response.data;
 
-      // Extract the new object structure into our state
       setCartItems(data.cartItems || []);
       setSubTotal(data.subTotal || 0);
       setDeliveryCharge(data.deliveryCharge || 0);
@@ -82,47 +88,46 @@ const CartPage = () => {
   const updateQuantity = async (cartItemId: number, newQty: number) => {
     if (newQty < 1) return;
 
-    // 🔹 Find the targeted item so we can grab its productId for the payload
     const itemToUpdate = cartItems.find((item) => item.id === cartItemId);
     if (!itemToUpdate) return;
 
-    // 🔹 Calculate the difference (will be 1 for Plus, -1 for Minus)
     const change = newQty - itemToUpdate.quantity;
 
     try {
-      // Optimistically update UI so the number changes instantly
       setCartItems((prev) =>
         prev.map((item) =>
-          item.id === cartItemId ? { ...item, quantity: newQty } : item,
+          item.id === cartItemId
+            ? {
+                ...item,
+                quantity: newQty,
+                totalPrice: item.price * newQty,
+                unitPrice: item.actualPrice * newQty,
+              }
+            : item,
         ),
       );
 
-      // 🔹 ACTUAL UPDATE API CALL using PATCH with query parameter
       await orderApi.patch(
         `/orders/cart/update/${itemToUpdate.id}?change=${change}`,
       );
 
-      // Refresh to get the newly calculated grandTotals from the server
       fetchCart();
     } catch (error) {
       Alert.alert("Error", "Could not update quantity");
-      fetchCart(); // Revert back on error
+      fetchCart();
     }
   };
 
   const removeItem = (id: number) => {
     const action = async () => {
-      // Optimistic delete
       setCartItems((prev) => prev.filter((item) => item.id !== id));
 
       try {
-        // ACTUAL DELETE API CALL
         await orderApi.delete(`/orders/bag/remove/${id}`);
-
-        fetchCart(); // Fetch to update the grand totals
+        fetchCart();
       } catch (error) {
         Alert.alert("Error", "Could not remove item");
-        fetchCart(); // Revert back on error
+        fetchCart();
       }
     };
 
@@ -136,10 +141,8 @@ const CartPage = () => {
     }
   };
 
-  // 🔹 NEW LOGIC: Clear entirely cart
   const clearCart = () => {
     const action = async () => {
-      // Optimistic clear UI
       setCartItems([]);
       setSubTotal(0);
       setDeliveryCharge(0);
@@ -147,10 +150,10 @@ const CartPage = () => {
 
       try {
         await orderApi.delete(`/orders/cart/clear`);
-        fetchCart(); // Fetch to sync with server
+        fetchCart();
       } catch (error) {
         Alert.alert("Error", "Could not clear cart");
-        fetchCart(); // Revert back on error
+        fetchCart();
       }
     };
 
@@ -164,52 +167,131 @@ const CartPage = () => {
     }
   };
 
-  const renderCartItem = ({ item }: { item: CartItem }) => (
-    <View style={styles.card}>
-      <Image
-        source={{
-          uri: "https://cdn-icons-png.flaticon.com/512/1973/1973636.png",
-        }}
-        style={styles.image}
-      />
-      <View style={styles.details}>
-        <Text style={styles.itemName}>{item.pname}</Text>
+  const renderCartItem = ({ item }: { item: CartItem }) => {
+    const hasDiscount = item.actualPrice > item.price;
+    const totalSavings = item.unitPrice - item.totalPrice;
 
-        <View style={styles.priceRow}>
-          <Text style={styles.itemPrice}>
-            ₹{item.totalPrice.toLocaleString()}
-          </Text>
-          {item.discount > 0 && (
-            <Text style={styles.actualPrice}>
-              ₹{item.unitPrice.toLocaleString()}
-            </Text>
-          )}
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardTop}>
+          <View style={styles.nameContainer}>
+            <View style={styles.iconBox}>
+              <Package size={20} color="#F2A20C" />
+            </View>
+            <View style={styles.nameAndPerUnit}>
+              <Text style={styles.itemName} numberOfLines={2}>
+                {item.pname}
+              </Text>
+              <View style={styles.perUnitRow}>
+                <Text style={styles.perUnitText}>
+                  ₹{formatPrice(item.price)} / unit
+                </Text>
+                {hasDiscount && (
+                  <Text style={styles.perUnitStrikethrough}>
+                    ₹{formatPrice(item.actualPrice)}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => removeItem(item.id)}
+            style={styles.deleteBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Trash2 size={20} color="#FF3B30" />
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.controls}>
+        <View style={styles.cardBottom}>
+          <View style={styles.priceContainer}>
+            <View style={styles.totalPriceRow}>
+              <Text style={styles.itemPrice}>
+                ₹{formatPrice(item.totalPrice)}
+              </Text>
+              {hasDiscount && (
+                <Text style={styles.actualPrice}>
+                  ₹{formatPrice(item.unitPrice)}
+                </Text>
+              )}
+            </View>
+            {hasDiscount && totalSavings > 0 && (
+              <Text style={styles.savingsText}>
+                You save ₹{formatPrice(totalSavings)}
+              </Text>
+            )}
+          </View>
+
           <View style={styles.qtyContainer}>
             <TouchableOpacity
               onPress={() => updateQuantity(item.id, item.quantity - 1)}
               style={styles.qtyBtn}
             >
-              <Minus size={16} color="#FFF" />
+              <Minus size={16} color="#1A1A1A" />
             </TouchableOpacity>
             <Text style={styles.qtyText}>{item.quantity}</Text>
             <TouchableOpacity
               onPress={() => updateQuantity(item.id, item.quantity + 1)}
               style={styles.qtyBtn}
             >
-              <Plus size={16} color="#FFF" />
+              <Plus size={16} color="#1A1A1A" />
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity onPress={() => removeItem(item.id)}>
-            <Trash2 size={20} color="#FF453A" />
-          </TouchableOpacity>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
+
+  // 🔹 Move Summary into its own function so we can pass it to ListFooterComponent
+  const renderSummary = () => {
+    if (cartItems.length === 0) return null;
+
+    return (
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryTitle}>ORDER SUMMARY</Text>
+
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Subtotal</Text>
+          <Text style={styles.summaryValue}>₹{formatPrice(subTotal)}</Text>
+        </View>
+
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Delivery Charge</Text>
+          <Text
+            style={[
+              styles.summaryValue,
+              deliveryCharge === 0 && styles.freeText,
+            ]}
+          >
+            {deliveryCharge === 0 ? "FREE" : `₹${formatPrice(deliveryCharge)}`}
+          </Text>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={[styles.summaryRow, styles.grandTotalRow]}>
+          <Text style={styles.totalLabel}>TOTAL AMOUNT</Text>
+          <Text style={styles.totalValue}>₹{formatPrice(grandTotal)}</Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.checkoutBtn}
+          onPress={() =>
+            router.push({
+              pathname: "/checkout",
+              params: {
+                orderItemIds: cartItems.map((item) => item.id).join(","),
+              },
+            })
+          }
+        >
+          <Text style={styles.checkoutText}>PROCEED TO CHECKOUT</Text>
+          <ChevronRight size={20} color="#1A1A1A" />
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   if (loading && !refreshing) {
     return (
@@ -221,18 +303,11 @@ const CartPage = () => {
 
   return (
     <View style={styles.container}>
-      {/* 🔹 Added inline view to hold the title and clear button side-by-side */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
+      <View style={styles.headerContainer}>
         <Text style={styles.header}>SHOPPING CART</Text>
         {cartItems.length > 0 && (
-          <TouchableOpacity onPress={clearCart}>
-            <Trash2 size={24} color="#FF453A" />
+          <TouchableOpacity onPress={clearCart} style={styles.clearBtn}>
+            <Trash2 size={20} color="#FF3B30" />
           </TouchableOpacity>
         )}
       </View>
@@ -241,8 +316,9 @@ const CartPage = () => {
         data={cartItems}
         renderItem={renderCartItem}
         keyExtractor={(item) => item.id.toString()}
-        // Give enough padding at bottom so the last item isn't hidden by the larger footer
         contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        ListFooterComponent={renderSummary} // 🔹 This makes it scroll below items!
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -252,7 +328,7 @@ const CartPage = () => {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <ShoppingBag size={60} color="#333" />
+            <ShoppingBag size={60} color="#E0E0E0" />
             <Text style={styles.emptyText}>Your cart is empty</Text>
             <TouchableOpacity
               style={styles.shopBtn}
@@ -263,155 +339,204 @@ const CartPage = () => {
           </View>
         }
       />
-
-      {cartItems.length > 0 && (
-        <View style={styles.footer}>
-          {/* 3. New Detailed Price Breakdown */}
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>
-              ₹
-              {subTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </Text>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Delivery Charge</Text>
-            <Text
-              style={[
-                styles.summaryValue,
-                deliveryCharge === 0 && styles.freeText,
-              ]}
-            >
-              {deliveryCharge === 0
-                ? "FREE"
-                : `₹${deliveryCharge.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-            </Text>
-          </View>
-
-          <View style={[styles.summaryRow, styles.grandTotalRow]}>
-            <Text style={styles.totalLabel}>TOTAL AMOUNT</Text>
-            <Text style={styles.totalValue}>
-              ₹
-              {grandTotal.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-              })}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.checkoutBtn}
-            // 🔹 MODIFIED: Pass the item IDs to the checkout page as a comma-separated string
-            onPress={() =>
-              router.push({
-                pathname: "/checkout",
-                params: {
-                  orderItemIds: cartItems.map((item) => item.id).join(","),
-                },
-              })
-            }
-          >
-            <Text style={styles.checkoutText}>PROCEED TO CHECKOUT</Text>
-            <ChevronRight size={20} color="#1A1A1A" />
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#1A1A1A", paddingHorizontal: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: "#F8F9FA", // Light off-white background
+  },
   center: {
     flex: 1,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#F8F9FA",
     justifyContent: "center",
     alignItems: "center",
   },
-  header: {
-    color: "#FFF",
-    fontSize: 24,
-    fontWeight: "900",
-    marginTop: 20,
-    marginBottom: 20,
-    letterSpacing: 1,
-  },
-  list: { paddingBottom: 220 }, // Increased padding for the taller footer
-  card: {
-    flexDirection: "row",
-    backgroundColor: "#262626",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-  image: {
-    width: 90,
-    height: 90,
-    borderRadius: 8,
-    backgroundColor: "#333",
-    tintColor: "#AAA",
-    resizeMode: "contain",
-  },
-  details: { flex: 1, marginLeft: 15, justifyContent: "space-between" },
-  itemName: { color: "#FFF", fontSize: 16, fontWeight: "700" },
-  priceRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  itemPrice: { color: "#F2A20C", fontSize: 16, fontWeight: "800" },
-  actualPrice: {
-    color: "#666",
-    fontSize: 12,
-    fontWeight: "600",
-    textDecorationLine: "line-through",
-  },
-  controls: {
+  headerContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 20,
+    marginTop: Platform.OS === "ios" ? 60 : 40,
+    marginBottom: 20,
+  },
+  header: {
+    color: "#1A1A1A", // Dark text
+    fontSize: 24,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  clearBtn: {
+    padding: 8,
+    backgroundColor: "#FFF2F0",
+    borderRadius: 8,
+  },
+  list: {
+    paddingHorizontal: 20,
+    paddingBottom: 40, // Reduced since summary scrolls now
+  },
+
+  // Card Styles
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  nameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    paddingRight: 10,
+  },
+  iconBox: {
+    backgroundColor: "#FFF8F0", // Light orange tint
+    padding: 10,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  nameAndPerUnit: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  itemName: {
+    color: "#1A1A1A",
+    fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 22,
+    marginBottom: 2,
+  },
+  perUnitRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  perUnitText: {
+    color: "#666",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  perUnitStrikethrough: {
+    color: "#999",
+    fontSize: 11,
+    fontWeight: "500",
+    textDecorationLine: "line-through",
+  },
+  deleteBtn: {
+    padding: 4,
+  },
+  cardBottom: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+  },
+  priceContainer: {
+    flexDirection: "column",
+    gap: 2,
+  },
+  totalPriceRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 8,
+  },
+  itemPrice: {
+    color: "#F2A20C",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  actualPrice: {
+    color: "#999",
+    fontSize: 13,
+    fontWeight: "600",
+    textDecorationLine: "line-through",
+  },
+  savingsText: {
+    color: "#34C759",
+    fontSize: 11,
+    fontWeight: "800",
+    marginTop: 2,
   },
   qtyContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1A1A1A",
-    borderRadius: 6,
-    padding: 4,
+    backgroundColor: "#F8F9FA",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    padding: 2,
   },
-  qtyBtn: { padding: 6 },
-  qtyText: { color: "#FFF", paddingHorizontal: 15, fontWeight: "700" },
+  qtyBtn: { padding: 8 },
+  qtyText: {
+    color: "#1A1A1A",
+    paddingHorizontal: 12,
+    fontSize: 15,
+    fontWeight: "800",
+  },
 
-  // Footer & Summary Styles
-  footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#262626",
+  // Summary Card (Now Scrollable)
+  summaryCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
     padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#333",
-    paddingBottom: Platform.OS === "ios" ? 30 : 20, // Extra padding for iPhone notch
+    marginTop: 10,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  summaryTitle: {
+    color: "#1A1A1A",
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    marginBottom: 16,
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  summaryLabel: { color: "#888", fontSize: 14, fontWeight: "500" },
-  summaryValue: { color: "#CCC", fontSize: 14, fontWeight: "600" },
-  freeText: { color: "#34C759", fontWeight: "800" }, // Green color for "FREE"
-  grandTotalRow: {
-    marginTop: 2,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#444",
     marginBottom: 12,
   },
-  totalLabel: { color: "#AAA", fontSize: 14, fontWeight: "700" },
-  totalValue: { color: "#FFF", fontSize: 20, fontWeight: "900" },
+  summaryLabel: { color: "#666", fontSize: 14, fontWeight: "500" },
+  summaryValue: { color: "#1A1A1A", fontSize: 14, fontWeight: "700" },
+  freeText: { color: "#34C759", fontWeight: "800" },
+  divider: {
+    height: 1,
+    backgroundColor: "#F0F0F0",
+    marginVertical: 12,
+  },
+  grandTotalRow: {
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  totalLabel: { color: "#1A1A1A", fontSize: 15, fontWeight: "800" },
+  totalValue: { color: "#F2A20C", fontSize: 20, fontWeight: "900" },
 
   checkoutBtn: {
     backgroundColor: "#F2A20C",
-    height: 48,
+    height: 50,
     borderRadius: 8,
     flexDirection: "row",
     justifyContent: "center",
@@ -424,16 +549,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     letterSpacing: 1,
   },
+
+  // Empty State
   emptyContainer: { alignItems: "center", marginTop: 100 },
-  emptyText: { color: "#666", fontSize: 18, marginTop: 20, marginBottom: 30 },
+  emptyText: {
+    color: "#1A1A1A",
+    fontSize: 18,
+    marginTop: 20,
+    marginBottom: 30,
+    fontWeight: "700",
+  },
   shopBtn: {
     borderWidth: 1,
     borderColor: "#F2A20C",
+    backgroundColor: "#FFF8F0",
     paddingHorizontal: 25,
     paddingVertical: 12,
-    borderRadius: 4,
+    borderRadius: 8,
   },
-  shopBtnText: { color: "#F2A20C", fontWeight: "700" },
+  shopBtnText: { color: "#F2A20C", fontWeight: "800", letterSpacing: 0.5 },
 });
 
 export default CartPage;

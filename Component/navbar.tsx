@@ -57,11 +57,22 @@ const SearchBar = React.memo(
           return;
         }
         try {
-          const res = await fetch(
-            `http://192.168.0.157:8080/api/products/search?q=${searchQuery}`,
+          // Using the new compatibility endpoint for smarter suggestions
+          const res = await categoryApi.get(
+            "/compatibility/filter/productsearch",
+            {
+              params: {
+                query: searchQuery,
+                vehicleBrand: selectedBrand?.name || "", // Pass brand if selected
+                page: 0,
+                size: 5, // Limit suggestions for performance
+              },
+            },
           );
-          const data = await res.json();
-          setSuggestions(Array.isArray(data) ? data : []);
+
+          // The backend returns { content: [...] }
+          const data = res.data;
+          setSuggestions(Array.isArray(data.content) ? data.content : []);
           setShowSuggestions(true);
         } catch (err) {
           console.log("Search error", err);
@@ -69,7 +80,7 @@ const SearchBar = React.memo(
       }, 400);
 
       return () => clearTimeout(delay);
-    }, [searchQuery]);
+    }, [searchQuery, selectedBrand]);
 
     return (
       <View style={{ zIndex: 100 }}>
@@ -145,23 +156,27 @@ const SearchBar = React.memo(
         )}
 
         {/* Suggestion Box */}
+        {/* Suggestion Box */}
         {showSuggestions && suggestions.length > 0 && (
           <View style={styles.suggestionBox}>
             <FlatList
               data={suggestions}
-              keyExtractor={(item, index) =>
-                item?.id ? `s-${item.id}` : `i-${index}`
-              }
+              keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.suggestionItem}
                   onPress={() => {
-                    setSearchQuery(item.name);
+                    // Use productName from your JSON structure
+                    const name = item.productName || item.name;
+                    setSearchQuery(name);
                     setShowSuggestions(false);
-                    handleSearchSubmit(item.name);
+                    handleSearchSubmit(name);
                   }}
                 >
-                  <Text style={styles.suggestionText}>{item.name}</Text>
+                  {/* Use productName here as well */}
+                  <Text style={styles.suggestionText}>
+                    {item.productName || item.name}
+                  </Text>
                 </TouchableOpacity>
               )}
             />
@@ -187,7 +202,12 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showBrandDropdown, setShowBrandDropdown] = useState(false);
   const [isNotifyOpen, setIsNotifyOpen] = useState(false);
-
+  const [fuels, setFuels] = useState<string[]>([]);
+  const [years, setYears] = useState<string[]>([]);
+  const [models, setModels] = useState<string[]>([]);
+  const [selectedFuel, setSelectedFuel] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
   const { deactivateDevice, unreadCount } = useNotifications();
   const [brands, setBrands] = useState<any[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<any>(null);
@@ -224,12 +244,12 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
   const handleLogoutAction = async () => {
     await setAuth(null);
     setIsMenuOpen(false);
-    setAlertConfig((prev) => ({ ...prev, visible: false })); // Close alert
+    setAlertConfig((prev) => ({ ...prev, visible: false }));
     router.replace("/login");
   };
 
   const triggerLogoutConfirm = () => {
-    setIsMenuOpen(false); // Close the account menu first
+    setIsMenuOpen(false);
     showAlert(
       "confirm",
       "Sign Out",
@@ -260,17 +280,39 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
 
     fetchBrands();
   }, []);
+  useEffect(() => {
+    if (selectedBrand) {
+      categoryApi
+        .get(`/vehicles/fuel-types?brand=${selectedBrand.name}`)
+        .then((res) => setFuels(res.data.fuelTypes || []))
+        .catch((err) => console.error(err));
+      // Reset lower levels
+      setSelectedFuel("");
+      setSelectedYear("");
+      setSelectedModel("");
+    }
+  }, [selectedBrand]);
+  useEffect(() => {
+    if (selectedFuel) {
+      categoryApi
+        .get(
+          `/vehicles/years?brand=${selectedBrand.name}&fuelType=${selectedFuel}`,
+        )
+        .then((res) => setYears(res.data.years || []))
+        .catch((err) => console.error(err));
+      setSelectedYear("");
+      setSelectedModel("");
+    }
+  }, [selectedFuel]);
 
   const handleSearchSubmit = (overrideQuery?: string) => {
-    // const finalQuery = (overrideQuery || searchQuery).trim();
+    const finalQuery = (overrideQuery || searchQuery).trim();
 
-    if (!overrideQuery && !selectedBrand) return;
     router.push({
       pathname: "../app/_components/productsDetails",
       params: {
-        q: overrideQuery || searchQuery,
-        brandId: selectedBrand?.id || "",
-        brandName: selectedBrand?.name || "All Brands",
+        q: finalQuery,
+        brand: selectedBrand?.name || "",
         isSearch: "true",
       },
     });

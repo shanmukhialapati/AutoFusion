@@ -32,10 +32,10 @@ const isWeb = Platform.OS === "web";
 const isMobile = Platform.OS === "ios" || Platform.OS === "android";
 
 interface Product {
-  id: number; // Changed from string to number per your JSON
+  id: number;
   name: string;
   description: string;
-  photoUrl: string; // Mapping this to the image display
+  photoUrl: string;
   partNumber: string;
   company: string;
   actualPrice: number;
@@ -62,7 +62,7 @@ export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [productsLoading, setProductsLoading] = useState(true); // Separate loader for products
+  const [productsLoading, setProductsLoading] = useState(true);
 
   const categoryX = useRef(0);
   const productX = useRef(0);
@@ -161,10 +161,7 @@ export default function HomePage() {
             source={{
               uri: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7",
             }}
-            style={[
-              styles.heroImage,
-              { transform: [{ translateY: 0 }] }, // Just the number},
-            ]}
+            style={[styles.heroImage, { transform: [{ translateY: 0 }] }]}
           />
           <Animated.View style={[styles.overlay, { opacity: headerOpacity }]}>
             <Text style={styles.tagline}>PREMIUM AUTOMOBILE PARTS</Text>
@@ -246,7 +243,6 @@ export default function HomePage() {
             )}
           </View>
 
-          {/* Featured Section */}
           <View style={styles.featuredSection}>
             <View style={[styles.sectionHeader, { paddingHorizontal: 20 }]}>
               <Text style={styles.heading}>Featured Products</Text>
@@ -263,7 +259,7 @@ export default function HomePage() {
             ) : (
               <FlatList
                 ref={productRef}
-                data={products} // Use backend data here
+                data={products}
                 keyExtractor={(item) => item.id.toString()}
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -277,7 +273,7 @@ export default function HomePage() {
                       product={{
                         id: item.id.toString(),
                         name: item.name || "Unknown Product",
-                        // Check if price exists before calling toLocaleString
+
                         price:
                           item.price != null
                             ? `₹${item.price.toLocaleString()}`
@@ -313,13 +309,13 @@ export default function HomePage() {
             styles.serviceSection,
             {
               flexDirection: isWeb ? "row" : "column",
-              // Adding a slight lift to the section
+
               marginTop: isMobile ? 20 : 40,
               backgroundColor: "#fff",
               borderRadius: 20,
               marginHorizontal: 20,
               paddingVertical: 25,
-              // Professional shadow
+
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.03,
@@ -330,7 +326,7 @@ export default function HomePage() {
         >
           {[
             {
-              icon: <Plane size={24} color="#590080" />, // Matching your brand purple
+              icon: <Plane size={24} color="#590080" />,
               title: "Free Home Delivery",
               sub: "Orders over $100",
             },
@@ -353,7 +349,6 @@ export default function HomePage() {
                   { justifyContent: isWeb ? "center" : "flex-start" },
                 ]}
               >
-                {/* Soft background for the icon */}
                 <View
                   style={{
                     backgroundColor: "#F5F3FF",
@@ -388,7 +383,6 @@ export default function HomePage() {
                 </View>
               </View>
 
-              {/* Divider logic */}
               {index !== 2 && (
                 <View
                   style={
@@ -422,7 +416,7 @@ export default function HomePage() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F5F7F9" },
   heroImage: {
-    height: BANNER_HEIGHT + 100,
+    height: Platform.OS === "web" ? BANNER_HEIGHT + 100 : 400,
     width: width,
     position: "absolute",
   },
@@ -430,7 +424,8 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
-    padding: 30,
+    padding: Platform.OS === "web" ? 30 : 40,
+    paddingBottom: Platform.OS === "web" ? 100 : 230,
   },
   tagline: {
     color: "#F2A20C",
@@ -439,10 +434,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 8,
   },
-  title: { color: "#fff", fontSize: 42, fontWeight: "900", lineHeight: 48 },
+  title: {
+    color: "#fff",
+    fontSize: Platform.OS === "web" ? 42 : 35,
+    fontWeight: "900",
+    lineHeight: 48,
+  },
   contentBody: {
     backgroundColor: "#F5F7F9",
-    marginTop: -40,
+    marginTop: Platform.OS === "web" ? -40 : -150,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
   },
@@ -466,7 +466,12 @@ const styles = StyleSheet.create({
   heading: { fontSize: 22, fontWeight: "800", color: "#1A1A1A" },
   arrowRow: { flexDirection: "row", gap: 8 },
   arrow: { backgroundColor: "#F0F2F5", padding: 8, borderRadius: 10 },
-  catCard: { width: 85, alignItems: "center", marginRight: 15, margin: 2 },
+  catCard: {
+    width: Platform.OS === "web" ? 85 : 80,
+    alignItems: "center",
+    marginRight: Platform.OS === "web" ? 15 : 10,
+    margin: 2,
+  },
   catImgWrapper: {
     width: 70,
     height: 70,

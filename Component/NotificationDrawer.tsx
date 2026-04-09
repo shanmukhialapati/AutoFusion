@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import PremiumAlert from "../app/_components/PremiumAlert";
 import {
   NotificationItem,
   useNotifications,
@@ -42,6 +43,7 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   } = useNotifications();
   const slideAnim = useRef(new Animated.Value(width)).current;
   const [shouldRender, setShouldRender] = useState(isOpen);
+  const [alertVisible, setAlertVisible] = useState(false);
   const [activeFilter, setActiveFilter] = useState<
     "All" | "Unread" | "Read" | "Favourites"
   >("All");
@@ -147,6 +149,10 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
       fetchNotifications(notifPage + 1);
     }
   };
+  const handleConfirmDelete = async () => {
+    setAlertVisible(false); // Hide alert
+    await deleteAllNotifications(); // Execute deletion
+  };
   return (
     <Modal
       animationType="none"
@@ -181,7 +187,7 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
             <View style={styles.headerActions}>
               {/* DELETE ALL BUTTON */}
               <TouchableOpacity
-                onPress={deleteAllNotifications}
+                onPress={() => setAlertVisible(true)}
                 style={styles.actionBtn}
               >
                 <Trash2 color="#EF4444" size={20} />
@@ -346,6 +352,16 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
           </ScrollView>
         </Animated.View>
       </View>
+      <PremiumAlert
+        visible={alertVisible}
+        type="confirm"
+        title="Clear All?"
+        message="Are you sure you want to delete all notifications? This action cannot be undone."
+        confirmText="Yes, Delete"
+        cancelText="No, Keep"
+        onClose={() => setAlertVisible(false)}
+        onConfirm={handleConfirmDelete}
+      />
     </Modal>
   );
 };
@@ -362,8 +378,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
     ...Platform.select({
-      web: { width: 450, boxShadow: "-10px 0 30px rgba(0,0,0,0.1)" },
-      android: { width: "95%" },
+      web: { width: 400, boxShadow: "-10px 0 30px rgba(0,0,0,0.1)" },
+      android: { width: "100%" },
       default: { width: "100%" },
     }),
     paddingTop: Platform.OS === "web" ? 20 : 50,
@@ -418,13 +434,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
   },
-  tabs: { flexDirection: "row", gap: 20 },
+  tabs: { flexDirection: "row", gap: Platform.OS === "web" ? 20 : 12 },
   tab: { paddingVertical: 4 },
   activeTab: {
-    borderBottomWidth: 2,
+    borderBottomWidth: 1,
     borderColor: "#F2A20C",
   },
-  tabText: { fontSize: 14, color: "#94A3B8", fontWeight: "600" },
+  tabText: {
+    fontSize: Platform.OS === "web" ? 14 : 13,
+    color: "#94A3B8",
+    fontWeight: "600",
+  },
   activeTabText: { color: "#0F172A" },
   markAllText: { fontSize: 13, color: "#F2A20C", fontWeight: "700" },
   notificationList: { flex: 1 },

@@ -310,7 +310,7 @@ export default function ProductsPage() {
             renderItem={({ item }) => (
               <Animated.View
                 entering={FadeIn}
-                style={{ width: isDesktop ? "25%" : "50%", padding: 5 }}
+                style={{ width: isDesktop ? "33%" : "50%", padding: 5 }}
               >
                 <ProductCard
                   product={{
