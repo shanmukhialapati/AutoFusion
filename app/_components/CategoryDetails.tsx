@@ -198,7 +198,7 @@ export default function CategoryDetails() {
         >
           {loading ? (
             <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color="#B8860B" />
+              <ActivityIndicator size="large" color="#F2A20C" />
             </View>
           ) : (
             <FlatList
@@ -353,9 +353,9 @@ const styles = StyleSheet.create({
   mobileCardWidth: { width: "50%" },
 
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: "#f1f1f1",
     borderRadius: 20,
-    padding: 15,
+    padding: 5,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#F1F3F5",

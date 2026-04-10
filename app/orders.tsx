@@ -128,16 +128,21 @@ export default function OrdersPage() {
       });
 
     showAlert("success","Success", "Your review has been posted!");
-      
-     
       setReviewedProducts((prev) => ({ ...prev, [productId]: true }));
       
-      // Clear inputs
       setRatings((prev) => ({ ...prev, [productId]: 0 }));
       setComments((prev) => ({ ...prev, [productId]: "" }));
-    } catch (error) {
-      showAlert("error","Error", "Could not submit review.");
-    } finally {
+    } catch (error: any) {
+    
+    const errorMessage = error.response?.data?.message
+      || error.message  
+      || "review submission failed";
+
+    console.error("Review Error:", error);
+    
+    showAlert("warning", "warning", errorMessage);
+  }
+     finally {
       setIsSubmitting(null);
     }
   };

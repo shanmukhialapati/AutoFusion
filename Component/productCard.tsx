@@ -345,7 +345,7 @@ const ProductCard: React.FC<Props> = ({
                 <Text style={styles.cartBtnText}>ADD</Text>
               </TouchableOpacity>
             ) : (
-              // FIX: Replaced plus/minus counter with static ADDED view
+              
               <View style={[styles.cartBtn, styles.addedBtn]}>
                 <Ionicons name="checkmark-circle" size={18} color="#166534" />
                 <Text style={[styles.cartBtnText, styles.addedBtnText]}>ADDED</Text>

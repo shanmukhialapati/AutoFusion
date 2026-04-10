@@ -115,11 +115,7 @@ export default function HomePage() {
       setProductsLoading(false);
     }
   };
-  const headerTranslate = scrollY.interpolate({
-    inputRange: [0, BANNER_HEIGHT],
-    outputRange: [0, -BANNER_HEIGHT / 3],
-    extrapolate: "clamp",
-  });
+ 
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, BANNER_HEIGHT / 2],
@@ -193,7 +189,7 @@ export default function HomePage() {
               </View>
             </View>
             {loading ? (
-              <ActivityIndicator color="#590080" style={{ padding: 20 }} />
+              <ActivityIndicator color="#F2A20C" style={{ padding: 20 }} />
             ) : categories.length === 0 ? (
               <View style={{ padding: 20, alignItems: "center" }}>
                 <Text style={{ color: "#999", fontWeight: "600" }}>
@@ -251,7 +247,7 @@ export default function HomePage() {
               </TouchableOpacity> */}
             </View>
             {productsLoading ? (
-              <ActivityIndicator color="#590080" style={{ padding: 40 }} />
+              <ActivityIndicator color="#F2A20C" style={{ padding: 40 }} />
             ) : products.length === 0 ? (
               <View style={{ padding: 40, alignItems: "center" }}>
                 <Text style={{ color: "#94A3B8" }}>No products available</Text>

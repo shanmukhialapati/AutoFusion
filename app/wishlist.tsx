@@ -169,7 +169,17 @@ const WishlistPage = () => {
     const isInCart = cartItemIds.includes(item.productId); // 🔹 NEW: Check if item is in cart
 
     return (
-      <View style={styles.card}>
+      // 🔹 FIX: Changed View to TouchableOpacity and added router.push
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.9}
+        onPress={() => {
+          router.push({
+            pathname: "/_components/ViewProductDetails",
+            params: { id: item.productId },
+          });
+        }}
+      >
         <View style={styles.imageWrapper}>
           {/* Placeholder added since your JSON provided a dummy image link */}
           <Image
@@ -217,7 +227,7 @@ const WishlistPage = () => {
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 

@@ -113,8 +113,10 @@ const AddressPage = () => {
       resetForm();
       fetchAddresses();
       showFeedback("Success", "Address saved successfully.");
-    } catch (error) {
-      showFeedback("Error", "Failed to save address.");
+    } catch (error: any) {
+      // 🔹 FIX: Extract and show the backend message
+      const backendMsg = error.response?.data?.message || "Failed to save address.";
+      showFeedback("Error", backendMsg);
     } finally {
       setLoading(false);
     }
@@ -145,8 +147,10 @@ const AddressPage = () => {
       await axiosInstance.delete(`/addresses/${id}`);
       setAddresses((prev) => prev.filter((addr) => addr.id !== id));
       showFeedback("Success", "Address deleted.");
-    } catch (error) {
-      showFeedback("Error", "Failed to delete address.");
+    } catch (error: any) {
+      // 🔹 FIX: Extract and show the backend message
+      const backendMsg = error.response?.data?.message || "Failed to delete address.";
+      showFeedback("Error", backendMsg);
     } finally {
       setLoading(false);
     }
