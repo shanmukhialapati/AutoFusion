@@ -5,7 +5,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image,
   Platform,
@@ -19,7 +18,6 @@ import PremiumAlert from "./PremiumAlert";
 
 const { width } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
-const isTablet = width >= 768;
 const isDesktop = width >= 1100;
 
 type AlertType = "success" | "warning" | "error";
@@ -47,9 +45,6 @@ export default function ProductDetails() {
     reviews: [] as any[],
   });
 
-  const isOutOfStock =
-    product?.status === "Out of Stock" || product?.stockQuantity <= 0;
-
   const showAlert = (type: AlertType, title: string, message: string) => {
     setAlertConfig({ visible: true, type, title, message });
   };
@@ -59,51 +54,11 @@ export default function ProductDetails() {
       setLoading(true);
       const res = await categoryApi.get(`/products/${id}`);
       setProduct(res.data);
-    } catch {
-      Alert.alert("Error", "Product not found");
+    } catch (err) {
+      console.error("Product fetch error:", err);
+      setProduct(null);
     } finally {
       setLoading(false);
-    }
-  }, [id]);
-  // 3. SYNC CART STATUS
-  useEffect(() => {
-    const fetchCartStatus = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token");
-        if (!token || !id) return;
-
-        const res = await cartApi.get("/orders/cart", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const items = res.data?.cartItems || res.data?.items || res.data || [];
-
-        const cartItem = Array.isArray(items)
-          ? items.find(
-              (item: any) =>
-                item.productId?.toString() === id.toString() ||
-                item.product?.id?.toString() === id.toString(),
-            )
-          : null;
-
-        if (cartItem) {
-          setQuantity(cartItem.quantity);
-        } else {
-          setQuantity(0);
-        }
-      } catch (err) {
-        console.log("Cart sync error:", err);
-      }
-    };
-
-    fetchCartStatus();
-  }, [id]);
-  const fetchReviews = useCallback(async () => {
-    try {
-      const res = await cartApi.get(`/reviews/${id}`);
-      setReviewsData(res.data);
-    } catch (err) {
-      console.log(err);
     }
   }, [id]);
 
@@ -111,6 +66,49 @@ export default function ProductDetails() {
     if (id) {
       fetchDetails();
       fetchReviews();
+      checkCartAndWishlist();
+    }
+  }, [id, fetchDetails]);
+
+  const checkCartAndWishlist = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token || !id) return;
+
+      const cartRes = await cartApi.get("/orders/cart", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const items =
+        cartRes.data?.cartItems || cartRes.data?.items || cartRes.data || [];
+      const cartItem = Array.isArray(items)
+        ? items.find(
+            (item: any) =>
+              item.productId?.toString() === id.toString() ||
+              item.product?.id?.toString() === id.toString(),
+          )
+        : null;
+      setQuantity(cartItem ? cartItem.quantity : 0);
+
+      const wishRes = await wishlistApi.get("/wishlist", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const wishlistItems = wishRes.data?.items || [];
+      setIsWishlisted(
+        wishlistItems.some(
+          (item: any) => item.productId?.toString() === id.toString(),
+        ),
+      );
+    } catch (err) {
+      console.log("Status sync error:", err);
+    }
+  };
+
+  const fetchReviews = useCallback(async () => {
+    try {
+      const res = await cartApi.get(`/reviews/${id}`);
+      setReviewsData(res.data);
+    } catch (err) {
+      console.log("Reviews error:", err);
     }
   }, [id]);
 
@@ -121,20 +119,14 @@ export default function ProductDetails() {
         showAlert("warning", "Login Required", "Please login first.");
         return;
       }
-
       setAddingToCart(true);
-
       await cartApi.post(
         "/orders/bag/add",
-        {
-          productId: product.id,
-          quantity: newQty,
-        },
+        { productId: product.id, quantity: newQty },
         {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-
       setQuantity(newQty);
     } catch {
       showAlert("error", "Error", "Failed to update cart");
@@ -156,41 +148,55 @@ export default function ProductDetails() {
           headers: { Authorization: `Bearer ${token}` },
         });
         setIsWishlisted(false);
+        showAlert("warning", "Wishlist Updated", `${product.name} removed.`);
       } else {
         await wishlistApi.post(`/wishlist/${id}`, null, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setIsWishlisted(true);
+        showAlert("success", "Wishlist Updated", `${product.name} added.`);
       }
-    } catch {
-      showAlert("error", "Error", "Wishlist update failed");
+    } catch (error: any) {
+      showAlert(
+        "error",
+        "Error",
+        error.response?.data?.message || "Wishlist update failed",
+      );
     }
   };
 
   if (loading) {
     return (
       <View style={styles.loaderWrap}>
-        <ActivityIndicator size="large" color="#7C3AED" />
+        <ActivityIndicator size="large" color="#F2A20C" />
       </View>
     );
   }
 
-  if (!product) return null;
+  if (!product) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="search-outline" size={80} color="#CBD5E1" />
+        <Text style={styles.errorTitle}>Product Not Found</Text>
+        <Text style={styles.errorSubtitle}>
+          The item you are looking for might have been removed or is currently
+          unavailable.
+        </Text>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => router.push("/")}
+        >
+          <Text style={styles.backBtnText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const isOutOfStock =
+    product?.status === "Out of Stock" || product?.stockQuantity <= 0;
 
   return (
     <View style={styles.container}>
-      {/* <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerIcon}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={20} color="#111827" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Product Details</Text>
-        <TouchableOpacity style={styles.headerIcon}>
-          <Ionicons name="share-social-outline" size={20} color="#111827" />
-        </TouchableOpacity>
-      </View> */}
       <TouchableOpacity style={styles.headerIcon} onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={20} color="#111827" />
       </TouchableOpacity>
@@ -221,7 +227,9 @@ export default function ProductDetails() {
               )}
             </View>
 
-            <Text style={styles.stockText}>
+            <Text
+              style={[styles.stockText, isOutOfStock && { color: "#EF4444" }]}
+            >
               {product.stockQuantity > 0
                 ? `${product.stockQuantity} In Stock`
                 : "Out of Stock"}
@@ -240,7 +248,7 @@ export default function ProductDetails() {
 
             <View style={styles.actionRow}>
               {addingToCart ? (
-                <ActivityIndicator color="#7C3AED" />
+                <ActivityIndicator color="#F2A20C" style={{ flex: 1 }} />
               ) : quantity === 0 ? (
                 <TouchableOpacity
                   style={[styles.cartBtn, isOutOfStock && styles.disabledBtn]}
@@ -251,7 +259,6 @@ export default function ProductDetails() {
                   <Text style={styles.cartBtnText}>Add to Cart</Text>
                 </TouchableOpacity>
               ) : (
-                // FIX: Replaced plus/minus counter with static ADDED view
                 <View style={[styles.cartBtn, styles.addedBtn]}>
                   <Ionicons name="checkmark-circle" size={18} color="#166534" />
                   <Text style={[styles.cartBtnText, styles.addedBtnText]}>
@@ -335,14 +342,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    margin: isWeb ? 20 : 10,
+    margin: 15,
     backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: { fontSize: 16, fontWeight: "800", color: "#111827" },
   pageWrap: {
-    flexDirection: Platform.OS === "web" ? "row" : "column",
+    flexDirection: Platform.OS === "web" && width > 800 ? "row" : "column",
     maxWidth: 1280,
     width: "100%",
     alignSelf: "center",
@@ -354,22 +360,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 24,
     padding: 20,
-    minHeight: Platform.OS === "web" ? 400 : 250,
+    minHeight: 300,
     justifyContent: "center",
     alignItems: "center",
   },
   productImage: {
     width: "100%",
     height: isDesktop ? 480 : 300,
-    resizeMode: "cover",
+    resizeMode: "contain",
     borderRadius: 16,
   },
-  infoCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 24,
-    padding: 22,
-  },
+  infoCard: { flex: 1, backgroundColor: "#fff", borderRadius: 24, padding: 22 },
   categoryText: {
     fontSize: 12,
     fontWeight: "700",
@@ -377,13 +378,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   productTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "900",
     color: "#111827",
     marginBottom: 14,
   },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  price: { fontSize: 30, fontWeight: "900", color: "#F59E0B" },
+  price: { fontSize: 28, fontWeight: "900", color: "#F59E0B" },
   discountPill: {
     backgroundColor: "#FEF3C7",
     paddingHorizontal: 10,
@@ -418,15 +419,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cartBtnText: { color: "#fff", fontWeight: "800" },
-
-  // NEW STYLES for the added state
-  addedBtn: {
-    backgroundColor: "#DCFCE7",
-  },
-  addedBtnText: {
-    color: "#166534",
-  },
-
+  addedBtn: { backgroundColor: "#DCFCE7" },
+  addedBtnText: { color: "#166534" },
   wishlistBtn: {
     width: 54,
     height: 54,
@@ -435,16 +429,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  qtyBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 18,
-    backgroundColor: "#FACC15",
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    height: 54,
-  },
-  qtyText: { fontWeight: "900", fontSize: 16 },
   section: { marginBottom: 24 },
   sectionTitle: {
     fontSize: 17,
@@ -475,4 +459,33 @@ const styles = StyleSheet.create({
   reviewComment: { color: "#475569" },
   emptyText: { color: "#94A3B8" },
   disabledBtn: { backgroundColor: "#CBD5E1" },
+
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+    backgroundColor: "#FFF",
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#1E293B",
+    marginTop: 20,
+  },
+  errorSubtitle: {
+    fontSize: 14,
+    color: "#64748B",
+    textAlign: "center",
+    marginTop: 10,
+    lineHeight: 20,
+  },
+  backBtn: {
+    marginTop: 30,
+    backgroundColor: "#111827",
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 12,
+  },
+  backBtnText: { color: "#FFF", fontWeight: "700" },
 });

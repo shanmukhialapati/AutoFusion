@@ -89,7 +89,6 @@ const SearchBar = React.memo(
       return () => clearTimeout(delay);
     }, [searchQuery, selectedBrand, selectedFuel, selectedYear, selectedModel]);
 
-    // Auto-advance logic: When a selection is made, open the next step
     const handleSelect = (type: string, value: any) => {
       if (type === "brand") {
         setSelectedBrand(value);
@@ -102,11 +101,10 @@ const SearchBar = React.memo(
         setActiveFilter("model");
       } else if (type === "model") {
         setSelectedModel(value);
-        setActiveFilter(null); // Finish
+        setActiveFilter(null);
       }
     };
 
-    // Determine what data to show in the single dropdown
     const getDropdownData = () => {
       if (activeFilter === "brand")
         return { title: "SELECT BRAND", data: brands };
@@ -161,7 +159,6 @@ const SearchBar = React.memo(
           </TouchableOpacity> */}
         </View>
 
-        {/* SINGLE UNIFIED DROPDOWN */}
         {activeFilter && dropdownConfig && (
           <View style={styles.singleDropdownOverlay}>
             <View style={styles.dropdownHeaderSmall}>
@@ -197,7 +194,6 @@ const SearchBar = React.memo(
           </View>
         )}
 
-        {/* SUGGESTIONS BOX */}
         {showSuggestions && searchQuery.trim().length > 0 && (
           <View style={styles.suggestionBox}>
             <FlatList
@@ -205,7 +201,6 @@ const SearchBar = React.memo(
               keyExtractor={(item) =>
                 item.productId?.toString() || Math.random().toString()
               }
-              // This handles the "Empty" state
               ListEmptyComponent={() => (
                 <View style={styles.noResultContainer}>
                   <Text style={styles.noResultText}>No products found</Text>
@@ -367,7 +362,7 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
     <View
       style={[
         styles.navContainer,
-        Platform.OS !== "web" && { height: "auto", paddingBottom: 15 }, // Allow height to grow on Mobile
+        Platform.OS !== "web" && { height: "auto", paddingBottom: 15 },
       ]}
     >
       <View style={styles.topSection}>
@@ -538,7 +533,7 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
         message={alertConfig.message}
         confirmText={alertConfig.type === "confirm" ? "LOGOUT" : "OK"}
         onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
-        onConfirm={alertConfig.onConfirm} // Pass the dynamic confirm action
+        onConfirm={alertConfig.onConfirm}
       />
     </View>
   );
@@ -578,7 +573,7 @@ const styles = StyleSheet.create({
   //   elevation: 5,
   // },
   navContainer: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#1d1d1d",
     borderBottomWidth: 2,
     borderColor: "#333",
     paddingHorizontal: 20,

@@ -183,7 +183,9 @@ const Footer = () => {
           >
             <FontAwesome name="apple" size={20} color="black" />
             <View style={styles.btnLabel}>
-              <Text style={styles.btnTopText}>App Store</Text>
+              <Text style={styles.btnTopText}>
+                App Store
+              </Text>
             </View>
           </Pressable>
           <Pressable

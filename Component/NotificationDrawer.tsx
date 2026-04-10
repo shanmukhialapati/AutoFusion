@@ -150,8 +150,8 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
     }
   };
   const handleConfirmDelete = async () => {
-    setAlertVisible(false); // Hide alert
-    await deleteAllNotifications(); // Execute deletion
+    setAlertVisible(false);
+    await deleteAllNotifications(); 
   };
   return (
     <Modal

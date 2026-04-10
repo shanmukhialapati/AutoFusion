@@ -122,7 +122,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     referenceId: data.referenceId,
     actionable: data.actionable ?? !!data.link,
     link: data.link,
-    starred: !!data.starred, // Map the starred status from backend
+    starred: !!data.starred, 
   });
 
   useEffect(() => {
@@ -139,11 +139,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       setIsLoadingNotifs(true);
       const storedToken = await AsyncStorage.getItem("token");
-      // const cleanToken = storedToken ? storedToken.replace(/"/g, "") : token;
 
       const [historyRes, countRes] = await Promise.all([
         mainApi.get(`${BASE_URL}/notifications`, {
-          params: { page: page, size: 5 },
+          params: { page: page, size: 20 },
           headers: { Authorization: `Bearer ${storedToken}` },
         }),
         mainApi.get(`${BASE_URL}/notifications/unread-count`, {
@@ -206,7 +205,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Clear local state
+      
       setNotifications([]);
       setUnreadCount(0);
 
@@ -300,6 +299,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
               return [newNotif, ...prev];
             });
             playNotificationSound();
+            fetchNotifications();
             triggerPopup(
               `${newNotif.title}: ${newNotif.message}`,
               newNotif.severity,
