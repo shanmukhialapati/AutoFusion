@@ -362,8 +362,7 @@ const CheckoutPage = () => {
                 router.push("/address");
               }}
             >
-              <Plus size={16} color="#F2A20C" />
-              <Text style={styles.miniAddText}>ADD NEW</Text>
+              <Text style={styles.miniAddText}>ADD ADDRESS</Text>
             </TouchableOpacity>
           )}
         </View>

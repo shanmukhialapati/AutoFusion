@@ -24,6 +24,8 @@ export default function ProductsPage() {
   const params = useLocalSearchParams();
 
   const activeCategory = (params.subCategoryName as string) || "";
+  // 🔹 FIX 1: Extract subCategoryId from route parameters
+  const subCategoryId = (params.subCategoryId as string) || "";
 
   // Pagination State
   const [products, setProducts] = useState<any[]>([]);
@@ -43,6 +45,7 @@ export default function ProductsPage() {
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+
   const loadInitialData = async () => {
     try {
       const brandRes = await categoryApi.get("/vehicles/brands");
@@ -52,16 +55,19 @@ export default function ProductsPage() {
       console.error("Initial load error:", e);
     }
   };
+
   useFocusEffect(
     useCallback(() => {
       loadInitialData();
-    }, [activeCategory]), // Triggers when category changes or screen is focused
+    }, [activeCategory, subCategoryId]), // Added subCategoryId to dependencies
   );
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
     setRefreshing(false);
   };
+
   const fetchProducts = useCallback(
     async (
       pageNumber: number = 0,
@@ -97,14 +103,17 @@ export default function ProductsPage() {
             },
           });
         } else {
-          // General Category Endpoint
-          response = await categoryApi.get("/products", {
-            params: {
-              subCategoryName: activeCategory,
-              page: pageNumber,
-              size: 10,
+          // 🔹 FIX 2: Updated General Category Endpoint
+          response = await categoryApi.get(
+            `/products/subcategory/${subCategoryId}`,
+            {
+              params: {
+                page: pageNumber,
+                size: 20,
+                sort: "createdAt,desc",
+              },
             },
-          });
+          );
         }
 
         const data = response.data;
@@ -127,7 +136,14 @@ export default function ProductsPage() {
         setLoadingMore(false);
       }
     },
-    [activeCategory, selectedBrand, selectedFuel, selectedYear, selectedModel],
+    [
+      activeCategory,
+      subCategoryId,
+      selectedBrand,
+      selectedFuel,
+      selectedYear,
+      selectedModel,
+    ],
   );
 
   // Initial load
@@ -146,7 +162,7 @@ export default function ProductsPage() {
     };
 
     if (activeCategory) loadInitialData();
-  }, [activeCategory]); // Removed fetchProducts from dependency to prevent loop
+  }, [activeCategory, subCategoryId]);
 
   const handleLoadMore = () => {
     if (!loadingMore && !isLastPage) {
@@ -205,7 +221,6 @@ export default function ProductsPage() {
 
   const handleModelSelect = (model: string) => {
     setSelectedModel(model);
-
     fetchProducts(0, selectedBrand, selectedFuel, selectedYear, model);
   };
 
@@ -310,7 +325,7 @@ export default function ProductsPage() {
             renderItem={({ item }) => (
               <Animated.View
                 entering={FadeIn}
-                style={{ width: isDesktop ? "33%" : "50%", padding: 5 }}
+                style={{ width: isDesktop ? "25%" : "50%", padding: 5 }}
               >
                 <ProductCard
                   product={{
