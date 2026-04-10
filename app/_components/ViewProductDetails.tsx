@@ -65,7 +65,39 @@ export default function ProductDetails() {
       setLoading(false);
     }
   }, [id]);
+  // 3. SYNC CART STATUS
+  useEffect(() => {
+    const fetchCartStatus = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token || !id) return;
 
+        const res = await cartApi.get("/orders/cart", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const items = res.data?.cartItems || res.data?.items || res.data || [];
+
+        const cartItem = Array.isArray(items)
+          ? items.find(
+              (item: any) =>
+                item.productId?.toString() === id.toString() ||
+                item.product?.id?.toString() === id.toString(),
+            )
+          : null;
+
+        if (cartItem) {
+          setQuantity(cartItem.quantity);
+        } else {
+          setQuantity(0);
+        }
+      } catch (err) {
+        console.log("Cart sync error:", err);
+      }
+    };
+
+    fetchCartStatus();
+  }, [id]);
   const fetchReviews = useCallback(async () => {
     try {
       const res = await cartApi.get(`/reviews/${id}`);
