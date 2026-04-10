@@ -3,7 +3,7 @@ import axios from "axios";
 
 const LOGIN_URL = "http://192.168.0.200:8081/api";
 const BASE_URL = "http://192.168.0.200:8081/api";
-const CATEGORY_BASE_URL = "http://192.168.0.135:8081/api";
+const CATEGORY_BASE_URL = "http://192.168.0.200:8081/api";
 const CART_URL = "http://192.168.0.200:8081/api";
 const ORDER_BASE_URL = "http://192.168.0.200:8081/api";
 const WISHLIST_URL = "http://192.168.0.200:8081/api";

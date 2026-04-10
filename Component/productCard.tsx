@@ -79,6 +79,7 @@ const ProductCard: React.FC<Props> = ({
   const showAlert = (type: AlertType, title: string, message: string) => {
     setAlertConfig({ visible: true, type, title, message });
   };
+
   useEffect(() => {
     const fetchCartStatus = async () => {
       try {
@@ -109,6 +110,7 @@ const ProductCard: React.FC<Props> = ({
 
     fetchCartStatus();
   }, [product.id, initialQuantity]);
+
   useEffect(() => {
     const checkWishlistStatus = async () => {
       try {
@@ -153,10 +155,6 @@ const ProductCard: React.FC<Props> = ({
 
       const payload = {
         productId: product.id,
-        // pname: product.name,
-        // actualPrice: product.actualPrice || numericPrice,
-        // discount: product.discount || 0,
-        // price: numericPrice,
         quantity: newQty,
       };
 
@@ -182,12 +180,12 @@ const ProductCard: React.FC<Props> = ({
         "error",
         "Error",
         error.response?.data?.message || "Connection failed.",
-        // "Connection failed.",
       );
     } finally {
       setLoading(false);
     }
   };
+
   const handleWishlistToggle = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
@@ -242,6 +240,7 @@ const ProductCard: React.FC<Props> = ({
       );
     }
   };
+
   const handlePress = () => {
     if (onView) onView(product);
 
@@ -322,15 +321,17 @@ const ProductCard: React.FC<Props> = ({
         <View style={[styles.content, isAndroid && { padding: 8 }]}>
           <View style={styles.ratingRow}>
             <Ionicons name="star" size={12} color="#FFD700" />
-            <Text style={styles.ratingText}>{product.rating}</Text>
+            {/* 🔹 FIX: Safely render and format the rating from the backend */}
+            <Text style={styles.ratingText}>
+              {product.rating != null
+                ? Number(product.rating).toFixed(1)
+                : "0.0"}
+            </Text>
           </View>
           <Text style={styles.name} numberOfLines={1}>
             {product.name}
           </Text>
-          <Text style={styles.catText}>
-            {/* {isOutOfStock ? "SOLD OUT" : product.category.toUpperCase()} */}
-            {product.category.toUpperCase()}
-          </Text>
+          <Text style={styles.catText}>{product.category.toUpperCase()}</Text>
           <View style={styles.footer}>
             <View style={styles.stockInfo}>
               <Text style={styles.stockValue}>Stock:{product.stock}</Text>
@@ -416,23 +417,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  // badge: {
-  //   width: 80,
-  //   height: 24,
-  //   justifyContent: "center",
-  //   alignItems: "center",
-  //   backgroundColor: "rgba(221, 219, 219, 0.9)",
-  //   paddingHorizontal: 10,
-  //   paddingVertical: 1,
-  //   borderRadius: 12,
-  // },
-  // outOfStockBadge: { backgroundColor: "#FCA5A5" },
-  // badgeText: {
-  //   fontSize: 10,
-  //   fontWeight: "700",
-  //   color: "#8b8b8b",
-  //   paddingTop: 10,
-  // },
   wishlistBtn: {
     backgroundColor: "#fff",
     width: 36,
@@ -476,7 +460,6 @@ const styles = StyleSheet.create({
   },
   stockInfo: { flex: 1 },
   stockLabel: { fontSize: 9, fontWeight: "800", color: "#94A3B8" },
-  // stockValue: { fontSize: 13, fontWeight: "700", color: "#22C55E" },
   cartBtn: {
     backgroundColor: "#F2A20C",
     flexDirection: "row",
@@ -493,7 +476,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#F2A20C",
     borderRadius: 13,
-    // padding: 2,
   },
   qtyBtn: {
     width: 36,
@@ -509,28 +491,22 @@ const styles = StyleSheet.create({
   },
   loaderContainer: { width: 80, alignItems: "center" },
   badge: {
-    // paddingHorizontal: 5,
-    // paddingVertical: 2,
-
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     minWidth: 85,
   },
-
   activeBadge: {
     backgroundColor: "#DCFCE7",
   },
   outOfStockBadge: {
     backgroundColor: "#FEE2E2",
   },
-
   badgeText: {
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.5,
     color: "#918f8f",
-    // paddingTop: 10,
   },
   catText: {
     fontSize: 10,
@@ -545,7 +521,6 @@ const styles = StyleSheet.create({
   outOfStockText: {
     color: "#991B1B",
   },
-
   stockValue: {
     fontSize: 13,
     fontWeight: "700",
