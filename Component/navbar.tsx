@@ -173,6 +173,13 @@ const SearchBar = React.memo(
               data={dropdownConfig.data}
               keyExtractor={(item, index) => index.toString()}
               keyboardShouldPersistTaps="handled"
+              ListEmptyComponent={() => (
+        <View style={styles.noResultContainer}>
+          <Text style={styles.noResultText}>
+            No {activeFilter}s found 
+          </Text>
+        </View>
+      )}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.brandItem}
@@ -368,7 +375,7 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
           AUTO<Text style={styles.subbrandName}>FUSION</Text>
         </Text>
 
-        {/* WEB ONLY: Search stays in the middle */}
+       
         {Platform.OS === "web" && (
           <View style={styles.webSearchWrapper}>
             <SearchBar
@@ -662,7 +669,7 @@ const styles = StyleSheet.create({
   suggestionText: { color: "#FFF", fontSize: 13, fontWeight: "bold" },
   badgeContainer: {
     position: "absolute",
-    top: -4,
+    top: -10,
     right: -6,
     backgroundColor: "#ff0000",
     borderRadius: 10,
@@ -749,6 +756,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800",
     marginRight: 5,
+   
     flex: 1,
   },
   singleDropdownOverlay: {
@@ -766,9 +774,11 @@ const styles = StyleSheet.create({
   },
   dropdownHeaderSmall: {
     padding: 10,
-    backgroundColor: "#262626",
+    backgroundColor: "rgb(38, 38, 38)",
     borderBottomWidth: 1,
     borderBottomColor: "#444",
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
   },
   dropdownHeaderText: {
     color: "#888",
@@ -783,6 +793,7 @@ const styles = StyleSheet.create({
     minWidth: 130,
     maxWidth: 160,
     height: "100%",
+    borderRadius: 6,
     backgroundColor: "#2a2a2a",
   },
   noResultContainer: {

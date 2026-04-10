@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { jwtDecode } from "jwt-decode";
 import { Car, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -16,7 +17,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { loginApi } from "../axios/axiosInstance"; // Your axios config with interceptors
+import { loginApi } from "../axios/axiosInstance";
 import { useAuth } from "../Context/authcontext";
 
 const LoginPage = () => {
@@ -73,8 +74,29 @@ const LoginPage = () => {
         });
 
         if (response.data.token) {
-          await setAuth({ token: response.data.token });
-          router.replace("/");
+          try {
+            // Decode the token to check the role inside it
+            const decodedToken: any = jwtDecode(response.data.token);
+
+            // Check if the role is exactly "USER"
+            if (decodedToken.role !== "USER") {
+              setError(
+                "Access denied. Only standard users can log in to this app.",
+              );
+              setLoading(false);
+              return; // Stop the login process here
+            }
+
+            // If role is correct, proceed with login
+            await setAuth({ token: response.data.token });
+            router.replace("/");
+          } catch (decodeError) {
+            setError("Error reading user credentials.");
+            setLoading(false);
+            return;
+          }
+        } else {
+          setError("Invalid response from server.");
         }
       } else {
         // SIGNUP API CALL
@@ -90,7 +112,6 @@ const LoginPage = () => {
           Alert.alert("Success", "Account created and logged in!");
           router.replace("/");
         } else {
-          // Fallback if no token is returned: switch to login mode
           Alert.alert("Success", "Account created! Please sign in.");
           setIsLogin(true);
         }
@@ -108,9 +129,7 @@ const LoginPage = () => {
     <View style={styles.container}>
       <ImageBackground
         source={require("../assets/images/automobile_bg.png")}
-        // Use a simple object for styles to avoid layout conflicts on Web
         style={styles.backgroundImage}
-        // This ensures the image covers the whole screen without disappearing
         resizeMode="cover"
       >
         <View style={styles.overlay}>
@@ -126,7 +145,6 @@ const LoginPage = () => {
                     { maxHeight: height * 0.85 },
                   ]}
                 >
-                  {/* Corrected ScrollView: Wrap all form content inside it */}
                   <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.scrollContent}
@@ -285,11 +303,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     paddingVertical: 20,
-    paddingBottom: 50, // Extra padding for better scroll experience on mobile
+    paddingBottom: 50,
   },
   contentContainer: {
     width: "100%",
-    overflow: "hidden", // Important for rounded corners during scroll
+    overflow: "hidden",
     ...Platform.select({
       web: {
         maxWidth: 450,
@@ -300,7 +318,7 @@ const styles = StyleSheet.create({
         borderColor: "#444",
       },
       android: {
-        backgroundColor: "rgba(26, 26, 26, 0.7)", // Added slight dark tint for mobile readability
+        backgroundColor: "rgba(26, 26, 26, 0.7)",
         borderRadius: 12,
         paddingHorizontal: 20,
       },
@@ -321,7 +339,6 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     height: "100%",
-    // This fixes the "invisible image" bug on some browsers
     position: Platform.OS === "web" ? "fixed" : "absolute",
   },
   brandName: {

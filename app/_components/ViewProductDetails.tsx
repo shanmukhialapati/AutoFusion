@@ -65,7 +65,38 @@ export default function ProductDetails() {
       setLoading(false);
     }
   }, [id]);
+// 3. SYNC CART STATUS
+  useEffect(() => {
+    const fetchCartStatus = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token || !id) return;
 
+        const res = await cartApi.get("/orders/cart", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        
+        const items = res.data?.cartItems || res.data?.items || res.data || [];
+        
+        const cartItem = Array.isArray(items) ? items.find(
+          (item: any) => 
+            item.productId?.toString() === id.toString() || 
+            item.product?.id?.toString() === id.toString()
+        ) : null;
+
+        if (cartItem) {
+          setQuantity(cartItem.quantity);
+        } else {
+          setQuantity(0);
+        }
+      } catch (err) {
+        console.log("Cart sync error:", err);
+      }
+    };
+
+    fetchCartStatus();
+  }, [id]);
   const fetchReviews = useCallback(async () => {
     try {
       const res = await cartApi.get(`/reviews/${id}`);
@@ -219,14 +250,12 @@ export default function ProductDetails() {
                   <Text style={styles.cartBtnText}>Add to Cart</Text>
                 </TouchableOpacity>
               ) : (
-                <View style={styles.qtyBox}>
-                  <TouchableOpacity onPress={() => updateCartAPI(quantity - 1)}>
-                    <Ionicons name="remove" size={18} color="#111" />
-                  </TouchableOpacity>
-                  <Text style={styles.qtyText}>{quantity}</Text>
-                  <TouchableOpacity onPress={() => updateCartAPI(quantity + 1)}>
-                    <Ionicons name="add" size={18} color="#111" />
-                  </TouchableOpacity>
+                // FIX: Replaced plus/minus counter with static ADDED view
+                <View style={[styles.cartBtn, styles.addedBtn]}>
+                  <Ionicons name="checkmark-circle" size={18} color="#166534" />
+                  <Text style={[styles.cartBtnText, styles.addedBtnText]}>
+                    ADDED
+                  </Text>
                 </View>
               )}
 
@@ -301,17 +330,6 @@ export default function ProductDetails() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   loaderWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
-  // header: {
-  //   height: 64,
-  //   paddingHorizontal: 18,
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   justifyContent: "space-between",
-  //   backgroundColor: "#fff",
-  //   borderBottomWidth: 1,
-  //   borderBottomColor: "#E2E8F0",
-  //   margin: isWeb ? 20 : 10,
-  // },
   headerIcon: {
     width: 40,
     height: 40,
@@ -399,6 +417,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cartBtnText: { color: "#fff", fontWeight: "800" },
+  
+  // NEW STYLES for the added state
+  addedBtn: {
+    backgroundColor: "#DCFCE7",
+  },
+  addedBtnText: {
+    color: "#166534",
+  },
+
   wishlistBtn: {
     width: 54,
     height: 54,
