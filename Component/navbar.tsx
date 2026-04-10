@@ -174,12 +174,12 @@ const SearchBar = React.memo(
               keyExtractor={(item, index) => index.toString()}
               keyboardShouldPersistTaps="handled"
               ListEmptyComponent={() => (
-        <View style={styles.noResultContainer}>
-          <Text style={styles.noResultText}>
-            No {activeFilter}s found 
-          </Text>
-        </View>
-      )}
+                <View style={styles.noResultContainer}>
+                  <Text style={styles.noResultText}>
+                    No {activeFilter}s found
+                  </Text>
+                </View>
+              )}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.brandItem}
@@ -371,11 +371,10 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
       ]}
     >
       <View style={styles.topSection}>
-        <Text style={styles.brandName} onPress={() => router.push("/")}>
+        <Text style={styles.brandName} onPress={() => router.replace("/")}>
           AUTO<Text style={styles.subbrandName}>FUSION</Text>
         </Text>
 
-       
         {Platform.OS === "web" && (
           <View style={styles.webSearchWrapper}>
             <SearchBar
@@ -578,28 +577,27 @@ const styles = StyleSheet.create({
   //   maxHeight: 300,
   //   elevation: 5,
   // },
- navContainer: {
-  backgroundColor: "#1A1A1A",
-  borderBottomWidth: 2,
-  borderColor: "#333",
-  paddingHorizontal: 20,
-  zIndex: 1000, 
-  elevation: 10, 
-  height: Platform.OS === "web" ? 80 : 130, 
-  justifyContent: "center",
-  overflow: "visible", // CRITICAL: Allows dropdowns to spill out of the nav
-},
+  navContainer: {
+    backgroundColor: "#1A1A1A",
+    borderBottomWidth: 2,
+    borderColor: "#333",
+    paddingHorizontal: 20,
+    zIndex: 1000,
+    elevation: 10,
+    height: Platform.OS === "web" ? 80 : 130,
+    justifyContent: "center",
+    overflow: "visible", // CRITICAL: Allows dropdowns to spill out of the nav
+  },
 
   topSection: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     width: "100%",
-    height:Platform.OS==="web"?60:80, 
+    height: Platform.OS === "web" ? 60 : 80,
   },
 
   webSearchWrapper: {
-  
     width: 550,
     marginHorizontal: 20,
   },
@@ -756,7 +754,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800",
     marginRight: 5,
-   
+
     flex: 1,
   },
   singleDropdownOverlay: {
