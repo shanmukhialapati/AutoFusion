@@ -95,7 +95,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const notificationListener = useRef<any>(null);
   const responseListener = useRef<any>(null);
-  const BASE_URL = "http://192.168.0.200:8081/api";
+  const BASE_URL = "http://10.20.0.223:8081/api";
 
   const mapBackendToUI = (data: any): NotificationItem => ({
     id: data.id?.toString() || Math.random().toString(),

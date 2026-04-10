@@ -90,10 +90,8 @@ const ProductCard: React.FC<Props> = ({
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // KEY FIX: Use res.data.cartItems based on your JSON structure
         const items = res.data?.cartItems || [];
 
-        // Find the item where productId matches
         const cartItem = items.find(
           (item: any) => item.productId?.toString() === product.id.toString(),
         );
@@ -163,13 +161,9 @@ const ProductCard: React.FC<Props> = ({
       });
 
       if (response.status === 200 || response.status === 201) {
-        // FIX: Only show alert if we are moving from 0 to 1 (Adding for the first time)
-        // and NOT when decreasing from 2 to 1.
         if (newQty === 1 && quantity === 0) {
           showAlert("success", "Success", `${product.name} added to bag!`);
-        }
-        // Optional: Add an alert for removing the item entirely
-        else if (newQty === 0 && quantity === 1) {
+        } else if (newQty === 0 && quantity === 1) {
           showAlert("warning", "Removed", `${product.name} removed from bag.`);
         }
 
@@ -321,7 +315,6 @@ const ProductCard: React.FC<Props> = ({
         <View style={[styles.content, isAndroid && { padding: 8 }]}>
           <View style={styles.ratingRow}>
             <Ionicons name="star" size={12} color="#FFD700" />
-            {/* 🔹 FIX: Safely render and format the rating from the backend */}
             <Text style={styles.ratingText}>
               {product.rating != null
                 ? Number(product.rating).toFixed(1)
@@ -351,20 +344,12 @@ const ProductCard: React.FC<Props> = ({
                 <Text style={styles.cartBtnText}>ADD</Text>
               </TouchableOpacity>
             ) : (
-              <View style={styles.quantityContainer}>
-                <TouchableOpacity
-                  onPress={() => updateCartAPI(quantity - 1)}
-                  style={styles.qtyBtn}
-                >
-                  <Ionicons name="remove" size={18} color="#000" />
-                </TouchableOpacity>
-                <Text style={styles.qtyText}>{quantity}</Text>
-                <TouchableOpacity
-                  onPress={() => updateCartAPI(quantity + 1)}
-                  style={styles.qtyBtn}
-                >
-                  <Ionicons name="add" size={18} color="#000" />
-                </TouchableOpacity>
+              // FIX: Replaced plus/minus counter with static ADDED view
+              <View style={[styles.cartBtn, styles.addedBtn]}>
+                <Ionicons name="checkmark-circle" size={18} color="#166534" />
+                <Text style={[styles.cartBtnText, styles.addedBtnText]}>
+                  ADDED
+                </Text>
               </View>
             )}
           </View>
@@ -425,14 +410,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  viewBtn: {
-    backgroundColor: "#fff",
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   priceTag: {
     position: "absolute",
     bottom: 0,
@@ -471,24 +448,15 @@ const styles = StyleSheet.create({
   },
   cartBtnText: { fontSize: 14, fontWeight: "800", color: "#000" },
   disabledBtn: { backgroundColor: "#E2E8F0", opacity: 0.7 },
-  quantityContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F2A20C",
-    borderRadius: 13,
+
+  // NEW STYLES for the added state
+  addedBtn: {
+    backgroundColor: "#DCFCE7", // Soft green background
   },
-  qtyBtn: {
-    width: 36,
-    height: 36,
-    justifyContent: "center",
-    alignItems: "center",
+  addedBtnText: {
+    color: "#166534", // Dark green text
   },
-  qtyText: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: "#000",
-    paddingHorizontal: 8,
-  },
+
   loaderContainer: { width: 80, alignItems: "center" },
   badge: {
     borderRadius: 12,

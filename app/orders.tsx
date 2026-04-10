@@ -61,7 +61,7 @@ export default function OrdersPage() {
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem("token");
-      const res = await cartApi.get("/orders/user", {
+      const res = await cartApi.get("/orders/all/user", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setOrders(res.data || []);
