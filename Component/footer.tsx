@@ -114,7 +114,7 @@ const Footer = () => {
                 <Pressable
                   key={i}
                   style={styles.socialCircle}
-                  onPress={() => handlePress(icon)} // 3. Attach the handler
+                  onPress={() => handlePress(icon)} 
                 >
                   {icon === "x-twitter" ? (
                     <FontAwesome6 name={icon} size={16} color="#AAA" />
@@ -149,7 +149,7 @@ const Footer = () => {
             </View>
 
             <View style={styles.linkCol}>
-              <Text style={styles.header}>Profile</Text>
+              <Text style={styles.header}>PROFILE</Text>
               {["Orders", "Address", "Change Password"].map((label) => (
                 <Pressable
                   key={label}

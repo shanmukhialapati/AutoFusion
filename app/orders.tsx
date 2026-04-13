@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -324,7 +325,7 @@ export default function OrdersPage() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
-  headerSection: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20 },
+  headerSection: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20,paddingTop: Platform.OS === "android" ? 60 : 40 },
   welcomeText: { fontSize: 24, fontWeight: "800", color: "#0F172A" },
   refreshBtn: { padding: 8, backgroundColor: "#FFF", borderRadius: 10, elevation: 2 },
   filterList: { paddingHorizontal: 20, gap: 8, marginBottom: 10 },

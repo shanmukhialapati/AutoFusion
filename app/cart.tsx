@@ -306,7 +306,7 @@ const CartPage = () => {
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push("/")}
           style={styles.headerIconBtn}
         >
           <ArrowLeft color="#F2A20C" size={24} />
@@ -365,9 +365,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-start",
     alignItems: "center",
-    paddingHorizontal: 20,
-    marginTop: Platform.OS === "ios" ? 60 : 40,
-    marginBottom: 20,
+    paddingHorizontal: 10,
+    marginTop: Platform.OS === "android" ? 10 : 20,
+    // marginBottom: 20,
   },
   header: {
     color: "#1A1A1A", // Dark text

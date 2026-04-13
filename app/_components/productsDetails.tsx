@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -327,7 +328,7 @@ export default function ProductsPage() {
             renderItem={({ item }) => (
               <Animated.View
                 entering={FadeIn}
-                style={{ width: isDesktop ? "25%" : "50%", padding: 5 }}
+                style={{ width: isDesktop ? "25%" : "51%", padding: 5 }}
               >
                 <ProductCard
                   product={{
@@ -500,7 +501,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+     paddingHorizontal: Platform.OS==="web"?20:15,
+        paddingVertical: 15,
     backgroundColor: "#FFF",
     borderBottomWidth: 1,
     borderColor: "#EEE",

@@ -120,7 +120,7 @@ const SearchBar = React.memo(
     const dropdownConfig = getDropdownData();
 
     return (
-      <View style={{ zIndex: 100, flex: 1 }}>
+      <View style={{ zIndex: 100}}>
         {/* {(activeFilter || (showSuggestions && suggestions.length > 0)) && (
           <Pressable style={styles.fullScreenOverlay} onPress={closeAll} />
         )} */}
@@ -216,7 +216,7 @@ const SearchBar = React.memo(
                   style={styles.suggestionItem}
                   onPress={() => {
                     setShowSuggestions(false);
-                    setSearchQuery(item.productName);
+                    // setSearchQuery(item.productName);
                     router.push({
                       pathname: `/_components/ViewProductDetails`,
                       params: { id: item.productId },
@@ -410,7 +410,7 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
                 : setIsNotifyOpen(true)
             }
           >
-            <Bell color="white" size={24} />
+            <Bell color="white" size={24} strokeWidth={2}  />
             {unreadCount > 0 && (
               <View style={styles.badgeContainer}>
                 <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
   elevation: 10, 
   height: Platform.OS === "web" ? 80 : 130, 
   justifyContent: "center",
-  overflow: "visible", // CRITICAL: Allows dropdowns to spill out of the nav
+  overflow: "visible", 
 },
 
   topSection: {
@@ -599,7 +599,6 @@ const styles = StyleSheet.create({
   },
 
   webSearchWrapper: {
-  
     width: 550,
     marginHorizontal: 20,
   },
@@ -715,21 +714,20 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     borderWidth: 1,
     borderColor: "#F2A20C",
-    zIndex: 9999, // High
+    zIndex: 9999, 
     elevation: 20,
   },
-  suggestionBox: {
-    position: "absolute",
-    top: 50,
-    left: 110,
-    right: 0,
-    backgroundColor: "#ffffff",
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#444",
-   
-    zIndex: 9999, // High
-  },
+ suggestionBox: {
+  position: "absolute",
+  top: 50,
+  left: 0,
+  right: 0,
+  backgroundColor: "#ffffff",
+  borderRadius: 6,
+  borderWidth: 1,
+  borderColor: "#444",
+  zIndex: 9999,
+},
   dropdownHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

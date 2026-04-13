@@ -284,6 +284,8 @@ export default function CategoryDetails() {
           </View>
         </View>
       )}
+         
+     
     </View>
   );
 }
@@ -294,7 +296,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: Platform.OS==="web"?20:15,
     paddingVertical: 15,
     backgroundColor: "#fff",
     borderBottomWidth: 1,

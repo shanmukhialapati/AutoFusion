@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 24,
     marginBottom: 20,
-    marginHorizontal: 8,
+    marginHorizontal: Platform.OS==="web"?8:2,
     borderWidth: 1,
     borderColor: "#F0F0F0",
     ...Platform.select({
