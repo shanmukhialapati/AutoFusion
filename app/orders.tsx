@@ -1,6 +1,8 @@
 import { cartApi } from "@/axios/axiosInstance";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import { ArrowLeft } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,6 +13,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View
 } from "react-native";
 import PremiumAlert from "../app/_components/PremiumAlert";
@@ -27,6 +30,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: string }>
 const FILTERS = ["All", "PLACED", "DISPATCHED", "DELIVERED", "PAYMENT_PENDING"];
 
 export default function OrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("All");
@@ -166,7 +170,7 @@ export default function OrdersPage() {
               <Text style={styles.paymentText}>{item.paymentMode} • {orderItems.length} Products</Text>
             </View>
             <View style={[styles.statusBadge, { backgroundColor: `${status.color}15` }]}>
-              <Ionicons name={status.icon as any} size={14} color={status.color} style={{ marginRight: 4 }} />
+              <Ionicons name={status.icon as any} size={16} color={status.color} style={{ marginRight: 4 }} />
               <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
             </View>
           </View>
@@ -264,9 +268,15 @@ export default function OrdersPage() {
   return (
     <View style={styles.container}>
       <View style={styles.headerSection}>
+        <TouchableOpacity
+          onPress={() => router.push("/")}
+          style={styles.headerIconBtn}
+        >
+          <ArrowLeft color="#F2A20C" size={24} />
+        </TouchableOpacity>
         <Text style={styles.welcomeText}>My Purchases</Text>
         <Pressable onPress={() => { fetchOrders(); fetchUserReviews(); }} style={styles.refreshBtn}>
-          <Ionicons name="refresh" size={20} color="#0F172A" />
+          <Ionicons name="refresh" size={22} color="#F2A20C" />
         </Pressable>
       </View>
 
@@ -319,7 +329,7 @@ const styles = StyleSheet.create({
   refreshBtn: { padding: 8, backgroundColor: "#FFF", borderRadius: 10, elevation: 2 },
   filterList: { paddingHorizontal: 20, gap: 8, marginBottom: 10 },
   filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, backgroundColor: "#E2E8F0" },
-  activeChip: { backgroundColor: "#0F172A" },
+  activeChip: { backgroundColor: "#F2A20C" },
   filterText: { fontSize: 13, fontWeight: "600", color: "#475569" },
   activeFilterText: { color: "#FFF" },
   listPadding: { paddingHorizontal: 20, paddingBottom: 40 },
@@ -351,4 +361,10 @@ const styles = StyleSheet.create({
   noProductsBox: { padding: 12, backgroundColor: "#FEF2F2", borderRadius: 8 },
   noProductsText: { color: "#B91C1C", fontSize: 13, textAlign: "center" },
   emptyTitle: { textAlign: "center", marginTop: 50, color: "#94A3B8" },
+   headerIconBtn: {
+    padding: 10,
+  marginRight: 10,
+    backgroundColor: "#fcf0e2",
+    borderRadius: 12,
+  },
 });

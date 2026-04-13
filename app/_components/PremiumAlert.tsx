@@ -37,7 +37,7 @@ const PremiumAlert: React.FC<Props> = ({
   confirmText = "OK",
   cancelText = "CANCEL",
 }) => {
-  // Check if it's a confirmation type to drive the layout
+  
   const isConfirmType = type === "confirm";
 
   const getTheme = () => {

@@ -22,7 +22,7 @@ export default function ProductsPage() {
   const isDesktop = width >= 1024;
   const isMobile = width < 768;
   const params = useLocalSearchParams();
-
+  const categoryName = (params.categoryName as string) || "";
   const activeCategory = (params.subCategoryName as string) || "";
   // 🔹 FIX 1: Extract subCategoryId from route parameters
   const subCategoryId = (params.subCategoryId as string) || "";
@@ -243,7 +243,9 @@ export default function ProductsPage() {
       <View style={styles.header}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.push({ pathname: "../_components/CategoryDetails",params: {
+                        categoryName:categoryName ,
+                      },})}
             style={styles.backBtn}
           >
             <Ionicons name="chevron-back" size={24} />

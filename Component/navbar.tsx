@@ -93,7 +93,7 @@ const SearchBar = React.memo(
     const handleSelect = (type: string, value: any) => {
       if (type === "brand") {
         setSelectedBrand(value);
-        setActiveFilter("fuel"); // Move to next step
+        setActiveFilter("fuel"); 
       } else if (type === "fuel") {
         setSelectedFuel(value);
         setActiveFilter("year");
@@ -426,7 +426,7 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
         </View>
       </View>
 
-      {/* MOBILE ONLY: Search moves below the brand text */}
+    
       {Platform.OS !== "web" && (
         <View style={styles.mobileSearchWrapper}>
           <SearchBar
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     height: 45,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#444",
+    borderTopColor: "#444",
     paddingRight: 5,
     width: "100%",
   },
@@ -658,15 +658,15 @@ const styles = StyleSheet.create({
   //   borderColor: "#F2A20C",
   //   zIndex: 9999,
   // },
-  brandItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: "#333" },
-  brandItemText: { color: "#FFF", fontSize: 10, fontWeight: "700" },
+  brandItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: "#e4e4e4" },
+  brandItemText: { color: "#000000", fontSize: 10, fontWeight: "700" },
   iconGroup: { flexDirection: "row", alignItems: "center", gap: 15 },
   suggestionItem: {
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#333",
   },
-  suggestionText: { color: "#FFF", fontSize: 13, fontWeight: "bold" },
+  suggestionText: { color: "#383737", fontSize: 13, fontWeight: "bold" },
   badgeContainer: {
     position: "absolute",
     top: -10,
@@ -674,11 +674,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#ff0000",
     borderRadius: 10,
     minWidth: 18,
+    borderColor:"#1d1d1d",
+    borderWidth:2,
+     paddingHorizontal: 5,
     height: 18,
     justifyContent: "center",
     alignItems: "center",
   },
-  badgeText: { color: "white", fontSize: 9, fontWeight: "bold" },
+  badgeText: { color: "white", fontSize: 10, fontWeight: 600 },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.7)",
@@ -709,7 +712,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: 200,
     backgroundColor: "#1E1E1E",
-    borderRadius: 6,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: "#F2A20C",
     zIndex: 9999, // High
@@ -720,10 +723,11 @@ const styles = StyleSheet.create({
     top: 50,
     left: 110,
     right: 0,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: "#ffffff",
     borderRadius: 6,
     borderWidth: 1,
     borderColor: "#444",
+   
     zIndex: 9999, // High
   },
   dropdownHeader: {
@@ -745,9 +749,9 @@ const styles = StyleSheet.create({
   menuText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
   dropdownContent: {
     width: 200,
-    backgroundColor: "#222",
+    backgroundColor: "#080808",
     borderRadius: 4,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: "#F2A20C",
     padding: 15,
   },
@@ -764,9 +768,10 @@ const styles = StyleSheet.create({
     top: 55,
     left: 0,
     width: 220,
-    backgroundColor: "#1E1E1E",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: "#ffffff",
+    color: "#000",
+    borderRadius: 10,
+    borderWidth: 2,
     borderColor: "#F2A20C",
     zIndex: 9999,
     elevation: 20,
@@ -774,17 +779,18 @@ const styles = StyleSheet.create({
   },
   dropdownHeaderSmall: {
     padding: 10,
-    backgroundColor: "rgb(38, 38, 38)",
+    backgroundColor: "rgb(0, 0, 0)",
     borderBottomWidth: 1,
-    borderBottomColor: "#444",
+    borderBottomColor: "#807e7e",
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
   },
   dropdownHeaderText: {
-    color: "#888",
+    color: "#ffffff",
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 1,
+  
   },
   unifiedSelector: {
     flexDirection: "row",
@@ -797,12 +803,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#2a2a2a",
   },
   noResultContainer: {
-    padding: 20,
+    padding: 15,
     alignItems: "center",
     justifyContent: "center",
   },
   noResultText: {
-    color: "#888",
+    color: "#3a3a3a",
     fontSize: 13,
     fontWeight: "600",
     fontStyle: "italic",

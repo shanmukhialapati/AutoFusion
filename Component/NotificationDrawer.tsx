@@ -356,7 +356,7 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
         visible={alertVisible}
         type="confirm"
         title="Clear All?"
-        message="Are you sure you want to delete all notifications? This action cannot be undone."
+        message="Are you sure you want to delete all notifications? this will premanently delete all your notifications"
         confirmText="Yes, Delete"
         cancelText="No, Keep"
         onClose={() => setAlertVisible(false)}
