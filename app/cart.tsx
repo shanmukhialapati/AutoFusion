@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   ChevronRight,
   Minus,
@@ -7,7 +7,7 @@ import {
   ShoppingBag,
   Trash2,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -59,9 +59,11 @@ const CartPage = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
+  useFocusEffect(
+  useCallback(() => {
     fetchCart();
-  }, []);
+  }, [])
+);
 
   const fetchCart = async () => {
     try {
