@@ -367,7 +367,7 @@ const ProductCard: React.FC<Props> = ({
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1,width:Platform.OS==="web"? "95%":"73%" },
   card: {
     backgroundColor: "#fff",
     borderRadius: 24,

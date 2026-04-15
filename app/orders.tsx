@@ -19,16 +19,17 @@ import {
 } from "react-native";
 import PremiumAlert from "../app/_components/PremiumAlert";
 
-type AlertType = "success" | "warning" | "error";
+type AlertType = "success" | "warning" | "error"|"confirm";
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: string }> = {
   PLACED: { label: "Placed", color: "#3B82F6", icon: "cube-outline" },
   DISPATCHED: { label: "Dispatched", color: "#8B5CF6", icon: "airplane-outline" },
   DELIVERED: { label: "Delivered", color: "#10B981", icon: "checkmark-done-circle-outline" },
   PAYMENT_PENDING: { label: "Pending", color: "#F59E0B", icon: "time-outline" },
+  CANCELLED: { label: "Cancelled", color: "#EF4444", icon: "close-circle-outline" }, // Added
 };
 
-const FILTERS = ["All", "PLACED", "DISPATCHED", "DELIVERED", "PAYMENT_PENDING"];
+const FILTERS = ["All", "PLACED", "DISPATCHED", "DELIVERED", "PAYMENT_PENDING", "CANCELLED"];
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function OrdersPage() {
   const [comments, setComments] = useState<Record<number, string>>({});
   const [isSubmitting, setIsSubmitting] = useState<number | null>(null);
   
-  // Tracks reviews using a unique string key: "orderId-productId"
+  
   const [reviewedProducts, setReviewedProducts] = useState<Record<string, boolean>>({});
 
   const [alertConfig, setAlertConfig] = useState({
@@ -49,13 +50,20 @@ export default function OrdersPage() {
     type: "success" as AlertType,
     title: "",
     message: "",
+    onConfirm: () => {},
   });
 
-  const showAlert = (type: AlertType, title: string, message: string) => {
-    setAlertConfig({ visible: true, type, title, message });
-  };
+ const showAlert = (type: AlertType, title: string, message: string, onConfirm?: () => void) => {
+  setAlertConfig({ 
+    visible: true, 
+    type, 
+    title, 
+    message, 
+    onConfirm: onConfirm || (() => {}) 
+  });
+};
 
-  // 1. Fetch existing reviews from backend to mark UI
+  
   const fetchUserReviews = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem("token");
@@ -66,7 +74,7 @@ export default function OrdersPage() {
       
       const reviewMap: Record<string, boolean> = {};
       res.data.forEach((rev: any) => {
-        // Create a unique key to identify specific purchase reviews
+       
         reviewMap[`${rev.orderId}-${rev.productId}`] = true;
       });
       setReviewedProducts(reviewMap);
@@ -75,7 +83,7 @@ export default function OrdersPage() {
     }
   }, []);
 
-  // 2. Fetch all orders
+
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
@@ -130,7 +138,7 @@ export default function OrdersPage() {
 
       showAlert("success", "Success", "Your review has been posted!");
       
-      // Update local state so the badge appears immediately
+     
       setReviewedProducts((prev) => ({ 
         ...prev, 
         [`${orderId}-${productId}`]: true 
@@ -145,7 +153,32 @@ export default function OrdersPage() {
       setIsSubmitting(null);
     }
   };
+  const handleCancelOrder = (orderId: number) => {
+  showAlert(
+    "confirm", 
+    "Cancel Order",
+    "Are you sure you want to cancel this order?",
+    async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        await cartApi.patch(`/orders/cancel/${orderId}`, null, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
+     
+        showAlert("success", "Cancelled", "Your order has been cancelled.");
+        
+      
+        setOrders((prev) =>
+          prev.map((o) => (o.orderId === orderId ? { ...o, orderStatus: "CANCELLED" } : o))
+        );
+      } catch (error: any) {
+        const msg = error.response?.data?.message || "Failed to cancel order.";
+        showAlert("error", "Error", msg);
+      }
+    }
+  );
+};
   const filteredOrders = useMemo(() => {
     if (activeFilter === "All") return orders;
     return orders.filter((o) => o.orderStatus === activeFilter);
@@ -156,7 +189,7 @@ export default function OrdersPage() {
     const isExpanded = expandedOrderId === item.orderId;
     const orderItems = item.orderItems || [];
     
-    // Determine if every item in this specific order has been reviewed
+  
     const isFullyReviewed = orderItems.length > 0 && orderItems.every((p: any) => 
       reviewedProducts[`${item.orderId}-${p.productId}`]
     );
@@ -165,22 +198,43 @@ export default function OrdersPage() {
       <View style={styles.orderCard}>
         <View style={[styles.statusIndicator, { backgroundColor: status.color }]} />
         <View style={styles.cardContent}>
-          <View style={styles.cardHeader}>
-            <View>
-              <Text style={styles.orderId}>Order #{item.orderId}</Text>
-              <Text style={styles.paymentText}>{item.paymentMode} • {orderItems.length} Products</Text>
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: `${status.color}15` }]}>
-              <Ionicons name={status.icon as any} size={16} color={status.color} style={{ marginRight: 4 }} />
-              <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
-            </View>
-          </View>
+          
+<View style={styles.cardHeader}>
+  <View>
+    <Text style={styles.orderId}>Order #{item.orderId}</Text>
+    <Text style={styles.paymentText}>
+      {item.paymentMode} • {orderItems.length} Products
+    </Text>
+    
+    <Text style={styles.dateText}>Placed: {item.orderDate}</Text>
+    
+    
+    {item.orderStatus === "CANCELLED" && item.cancelledAt && (
+      <Text style={styles.cancelledDateText}>
+        Cancelled: {item.cancelledAt}
+      </Text>
+    )}
+  </View>
+  
+  <View style={[styles.statusBadge, { backgroundColor: `${status.color}15` }]}>
+    <Ionicons name={status.icon as any} size={16} color={status.color} style={{ marginRight: 4 }} />
+    <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+  </View>
+</View>
 
           <View style={styles.divider} />
           <Text style={styles.metaLabel}>Total Price</Text>
           <Text style={styles.totalPrice}>₹{item.finalAmount?.toFixed(2)}</Text>
 
           <View style={styles.actionContainer}>
+            {(item.orderStatus === "PLACED" || item.orderStatus === "PAYMENT_PENDING") && (
+    <Pressable 
+      style={[styles.primaryAction, { backgroundColor: "#FEE2E2", marginBottom: 8 }]} 
+      onPress={() => handleCancelOrder(item.orderId)}
+    >
+      <Text style={[styles.primaryActionText, { color: "#EF4444" }]}>Cancel Order</Text>
+    </Pressable>
+  )}
             {item.orderStatus === "DISPATCHED" && (
               <Pressable style={styles.primaryAction} onPress={() => handleMarkDelivered(item.orderId)}>
                 <Text style={styles.primaryActionText}>Mark as Received</Text>
@@ -311,24 +365,27 @@ export default function OrdersPage() {
           }
         />
       )}
-
-      <PremiumAlert
-        visible={alertConfig.visible}
-        type={alertConfig.type}
-        title={alertConfig.title}
-        message={alertConfig.message}
-        onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
-      />
+<PremiumAlert
+  visible={alertConfig.visible}
+  type={alertConfig.type}
+  title={alertConfig.title}
+  message={alertConfig.message}
+  onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
+  onConfirm={() => {
+    alertConfig.onConfirm(); 
+    setAlertConfig((prev) => ({ ...prev, visible: false })); 
+  }}
+/>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
-  headerSection: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20,paddingTop: Platform.OS === "android" ? 60 : 40 },
+  headerSection: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20,paddingTop: Platform.OS === "android" ? 20 : 20 },
   welcomeText: { fontSize: 24, fontWeight: "800", color: "#0F172A" },
   refreshBtn: { padding: 8, backgroundColor: "#FFF", borderRadius: 10, elevation: 2 },
-  filterList: { paddingHorizontal: 20, gap: 8, marginBottom: 10 },
+  filterList: { paddingHorizontal: 20, gap: 8, marginBottom: 20 },
   filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, backgroundColor: "#E2E8F0" },
   activeChip: { backgroundColor: "#F2A20C" },
   filterText: { fontSize: 13, fontWeight: "600", color: "#475569" },
@@ -363,9 +420,20 @@ const styles = StyleSheet.create({
   noProductsText: { color: "#B91C1C", fontSize: 13, textAlign: "center" },
   emptyTitle: { textAlign: "center", marginTop: 50, color: "#94A3B8" },
    headerIconBtn: {
-    padding: 10,
+    padding: 8,
   marginRight: 10,
-    backgroundColor: "#fcf0e2",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
+  },
+  dateText: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 4,
+  },
+  cancelledDateText: {
+    fontSize: 11,
+    color: "#EF4444", 
+    fontWeight: "600",
+    marginTop: 2,
   },
 });

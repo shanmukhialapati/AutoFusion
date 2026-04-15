@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   loaderWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
   headerIcon: {
-    width: 40, height: 40, borderRadius: 12, margin: 15,
+    width: 40, height: 40, borderRadius: 12,marginLeft: 18, marginTop: 18,
     backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center",
   },
   pageWrap: {
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: "#fff", borderRadius: 24, padding: 20,
     minHeight: 300, justifyContent: "center", alignItems: "center",
   },
-  productImage: { width: "100%", height: isDesktop ? 480 : 300, resizeMode: "contain", borderRadius: 16 },
+  productImage: { width: "100%", height: isDesktop ? 480 : 300, resizeMode: "cover", borderRadius: 16 },
   infoCard: { flex: 1, backgroundColor: "#fff", borderRadius: 24, padding: 22 },
   categoryText: { fontSize: 12, fontWeight: "700", color: "#7C3AED", marginBottom: 8 },
   productTitle: { fontSize: 24, fontWeight: "900", color: "#111827", marginBottom: 14 },

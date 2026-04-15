@@ -413,7 +413,9 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
             <Bell color="white" size={24} strokeWidth={2}  />
             {unreadCount > 0 && (
               <View style={styles.badgeContainer}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
+                <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}
+                  {/* {unreadCount} */}
+                  </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -585,7 +587,7 @@ const styles = StyleSheet.create({
   paddingHorizontal: 20,
   zIndex: 1000, 
   elevation: 10, 
-  height: Platform.OS === "web" ? 80 : 130, 
+  height: Platform.OS === "web" ? 70 : 100, 
   justifyContent: "center",
   overflow: "visible", 
 },
@@ -668,15 +670,15 @@ const styles = StyleSheet.create({
   suggestionText: { color: "#383737", fontSize: 13, fontWeight: "bold" },
   badgeContainer: {
     position: "absolute",
-    top: -10,
-    right: -6,
+    top: -11,
+    right: -7,
     backgroundColor: "#ff0000",
-    borderRadius: 10,
-    minWidth: 18,
+    borderRadius: 50,
+    width: 20,
     borderColor:"#1d1d1d",
     borderWidth:2,
-     paddingHorizontal: 5,
-    height: 18,
+    padding: 3,
+    height: 20,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -691,17 +693,17 @@ const styles = StyleSheet.create({
   },
   iconBtn: { padding: 5 },
   fullScreenOverlay: {
-    position: "fixed", // For Web
+    position: "fixed", 
     // @ts-ignore
     position: Platform.OS === "web" ? "fixed" : "absolute",
-    top: -500, // Large enough to cover header area
+    top: -500,
     left: -500,
     right: -500,
     bottom: -1000,
-    width: 5000, // Ensure it covers the whole screen
+    width: 5000, 
     height: 5000,
     backgroundColor: "transparent",
-    zIndex: 5, // Lower than dropdowns but higher than page content
+    zIndex: 5, 
   },
 
   // Ensure these have a higher zIndex than fullScreenOverlay
@@ -714,7 +716,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     borderWidth: 1,
     borderColor: "#F2A20C",
-    zIndex: 9999, 
+    zIndex: 9999, // High
     elevation: 20,
   },
  suggestionBox: {
