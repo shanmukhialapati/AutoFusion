@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import {
+  ArrowLeft,
   ChevronRight,
   Minus,
   Package,
@@ -306,6 +307,12 @@ const CartPage = () => {
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
+        <TouchableOpacity
+          onPress={() => router.push("/")}
+          style={styles.headerIconBtn}
+        >
+          <ArrowLeft color="#F2A20C" size={24} />
+        </TouchableOpacity>
         <Text style={styles.header}>SHOPPING CART</Text>
         {cartItems.length > 0 && (
           <TouchableOpacity onPress={clearCart} style={styles.clearBtn}>
@@ -358,11 +365,11 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     alignItems: "center",
-    paddingHorizontal: 20,
-    marginTop: Platform.OS === "ios" ? 60 : 40,
-    marginBottom: 20,
+    paddingHorizontal: 10,
+    marginTop: Platform.OS === "android" ? 10 : 20,
+    // marginBottom: 20,
   },
   header: {
     color: "#1A1A1A", // Dark text
@@ -406,8 +413,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 10,
   },
+  headerIconBtn: {
+    padding: 10,
+  marginRight: 10,
+    backgroundColor: "#FFF8F0",
+    borderRadius: 12,
+  },
   iconBox: {
-    backgroundColor: "#FFF8F0", // Light orange tint
+    backgroundColor: "#FFF8F0", 
     padding: 10,
     borderRadius: 8,
     marginRight: 12,

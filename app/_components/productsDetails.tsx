@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -22,7 +23,7 @@ export default function ProductsPage() {
   const isDesktop = width >= 1024;
   const isMobile = width < 768;
   const params = useLocalSearchParams();
-
+  const categoryName = (params.categoryName as string) || "";
   const activeCategory = (params.subCategoryName as string) || "";
   // 🔹 FIX 1: Extract subCategoryId from route parameters
   const subCategoryId = (params.subCategoryId as string) || "";
@@ -243,7 +244,9 @@ export default function ProductsPage() {
       <View style={styles.header}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.push({ pathname: "../_components/CategoryDetails",params: {
+                        categoryName:categoryName ,
+                      },})}
             style={styles.backBtn}
           >
             <Ionicons name="chevron-back" size={24} />
@@ -325,7 +328,7 @@ export default function ProductsPage() {
             renderItem={({ item }) => (
               <Animated.View
                 entering={FadeIn}
-                style={{ width: isDesktop ? "25%" : "50%", padding: 5 }}
+                style={{ width: isDesktop ? "25%" : "51%", padding: 5 }}
               >
                 <ProductCard
                   product={{
@@ -498,7 +501,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+     paddingHorizontal: Platform.OS==="web"?20:15,
+        paddingVertical: 15,
     backgroundColor: "#FFF",
     borderBottomWidth: 1,
     borderColor: "#EEE",

@@ -95,7 +95,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const notificationListener = useRef<any>(null);
   const responseListener = useRef<any>(null);
-  const BASE_URL = "http://10.20.0.223:8081/api";
+  const BASE_URL = "http://10.20.0.219:8081/api";
 
   const mapBackendToUI = (data: any): NotificationItem => ({
     id: data.id?.toString() || Math.random().toString(),
@@ -295,15 +295,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
             const newNotif = mapBackendToUI(raw);
 
             setNotifications((prev) => {
-              if (prev.some((n) => n.id === newNotif.id)) return prev;
-              return [newNotif, ...prev];
-            });
-            playNotificationSound();
-            fetchNotifications();
+              playNotificationSound();
             triggerPopup(
               `${newNotif.title}: ${newNotif.message}`,
               newNotif.severity,
             );
+              
+            
+            return [newNotif, ...prev];
+            });
+            
+            fetchNotifications();
           } catch (e) {
             console.error("SSE JSON Parse error", e);
           }

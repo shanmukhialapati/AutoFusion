@@ -368,12 +368,12 @@ const ProductCard: React.FC<Props> = ({
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1,width:Platform.OS==="web"? "95%":"73%" },
   card: {
     backgroundColor: "#fff",
     borderRadius: 24,
     marginBottom: 20,
-    marginHorizontal: 8,
+    marginHorizontal: Platform.OS==="web"?8:2,
     borderWidth: 1,
     borderColor: "#F0F0F0",
     ...Platform.select({

@@ -342,7 +342,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    margin: 15,
+    marginLeft: 18,
+    marginTop: 18,
     backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
@@ -367,7 +368,7 @@ const styles = StyleSheet.create({
   productImage: {
     width: "100%",
     height: isDesktop ? 480 : 300,
-    resizeMode: "contain",
+    resizeMode: "cover",
     borderRadius: 16,
   },
   infoCard: { flex: 1, backgroundColor: "#fff", borderRadius: 24, padding: 22 },

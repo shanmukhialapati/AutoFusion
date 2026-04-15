@@ -92,7 +92,7 @@ const SearchBar = React.memo(
     const handleSelect = (type: string, value: any) => {
       if (type === "brand") {
         setSelectedBrand(value);
-        setActiveFilter("fuel"); // Move to next step
+        setActiveFilter("fuel");
       } else if (type === "fuel") {
         setSelectedFuel(value);
         setActiveFilter("year");
@@ -118,7 +118,7 @@ const SearchBar = React.memo(
     const dropdownConfig = getDropdownData();
 
     return (
-      <View style={{ zIndex: 100, flex: 1 }}>
+      <View style={{ zIndex: 100 }}>
         {/* {(activeFilter || (showSuggestions && suggestions.length > 0)) && (
           <Pressable style={styles.fullScreenOverlay} onPress={closeAll} />
         )} */}
@@ -211,7 +211,7 @@ const SearchBar = React.memo(
                   style={styles.suggestionItem}
                   onPress={() => {
                     setShowSuggestions(false);
-                    setSearchQuery(item.productName);
+                    // setSearchQuery(item.productName);
                     router.push({
                       pathname: `/_components/ViewProductDetails`,
                       params: { id: item.productId },
@@ -404,10 +404,13 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
                 : setIsNotifyOpen(true)
             }
           >
-            <Bell color="white" size={24} />
+            <Bell color="white" size={24} strokeWidth={2} />
             {unreadCount > 0 && (
               <View style={styles.badgeContainer}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
+                <Text style={styles.badgeText}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                  {/* {unreadCount} */}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -420,7 +423,6 @@ const Navbar = ({ onNotificationsPress }: NavbarProps) => {
         </View>
       </View>
 
-      {/* MOBILE ONLY: Search moves below the brand text */}
       {Platform.OS !== "web" && (
         <View style={styles.mobileSearchWrapper}>
           <SearchBar
@@ -547,7 +549,7 @@ const styles = StyleSheet.create({
     height: 45,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#444",
+    borderTopColor: "#444",
     paddingRight: 5,
     width: "100%",
   },
@@ -579,9 +581,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     zIndex: 1000,
     elevation: 10,
-    height: Platform.OS === "web" ? 80 : 130,
+    height: Platform.OS === "web" ? 70 : 100,
     justifyContent: "center",
-    overflow: "visible", // CRITICAL: Allows dropdowns to spill out of the nav
+    overflow: "visible",
   },
 
   topSection: {
@@ -651,27 +653,34 @@ const styles = StyleSheet.create({
   //   borderColor: "#F2A20C",
   //   zIndex: 9999,
   // },
-  brandItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: "#333" },
-  brandItemText: { color: "#FFF", fontSize: 10, fontWeight: "700" },
+  brandItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e4e4e4",
+  },
+  brandItemText: { color: "#000000", fontSize: 10, fontWeight: "700" },
   iconGroup: { flexDirection: "row", alignItems: "center", gap: 15 },
   suggestionItem: {
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#333",
   },
-  suggestionText: { color: "#FFF", fontSize: 13, fontWeight: "bold" },
+  suggestionText: { color: "#383737", fontSize: 13, fontWeight: "bold" },
   badgeContainer: {
     position: "absolute",
-    top: -10,
-    right: -6,
+    top: -11,
+    right: -7,
     backgroundColor: "#ff0000",
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
+    borderRadius: 50,
+    width: 20,
+    borderColor: "#1d1d1d",
+    borderWidth: 2,
+    padding: 3,
+    height: 20,
     justifyContent: "center",
     alignItems: "center",
   },
-  badgeText: { color: "white", fontSize: 9, fontWeight: "bold" },
+  badgeText: { color: "white", fontSize: 10, fontWeight: 600 },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.7)",
@@ -682,17 +691,17 @@ const styles = StyleSheet.create({
   },
   iconBtn: { padding: 5 },
   fullScreenOverlay: {
-    position: "fixed", // For Web
+    position: "fixed",
     // @ts-ignore
     position: Platform.OS === "web" ? "fixed" : "absolute",
-    top: -500, // Large enough to cover header area
+    top: -500,
     left: -500,
     right: -500,
     bottom: -1000,
-    width: 5000, // Ensure it covers the whole screen
+    width: 5000,
     height: 5000,
     backgroundColor: "transparent",
-    zIndex: 5, // Lower than dropdowns but higher than page content
+    zIndex: 5,
   },
 
   // Ensure these have a higher zIndex than fullScreenOverlay
@@ -702,7 +711,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: 200,
     backgroundColor: "#1E1E1E",
-    borderRadius: 6,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: "#F2A20C",
     zIndex: 9999, // High
@@ -711,13 +720,13 @@ const styles = StyleSheet.create({
   suggestionBox: {
     position: "absolute",
     top: 50,
-    left: 110,
+    left: 0,
     right: 0,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: "#ffffff",
     borderRadius: 6,
     borderWidth: 1,
     borderColor: "#444",
-    zIndex: 9999, // High
+    zIndex: 9999,
   },
   dropdownHeader: {
     flexDirection: "row",
@@ -738,9 +747,9 @@ const styles = StyleSheet.create({
   menuText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
   dropdownContent: {
     width: 200,
-    backgroundColor: "#222",
+    backgroundColor: "#080808",
     borderRadius: 4,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: "#F2A20C",
     padding: 15,
   },
@@ -757,9 +766,10 @@ const styles = StyleSheet.create({
     top: 55,
     left: 0,
     width: 220,
-    backgroundColor: "#1E1E1E",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: "#ffffff",
+    color: "#000",
+    borderRadius: 10,
+    borderWidth: 2,
     borderColor: "#F2A20C",
     zIndex: 9999,
     elevation: 20,
@@ -767,14 +777,14 @@ const styles = StyleSheet.create({
   },
   dropdownHeaderSmall: {
     padding: 10,
-    backgroundColor: "rgb(38, 38, 38)",
+    backgroundColor: "rgb(0, 0, 0)",
     borderBottomWidth: 1,
-    borderBottomColor: "#444",
+    borderBottomColor: "#807e7e",
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
   },
   dropdownHeaderText: {
-    color: "#888",
+    color: "#ffffff",
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 1,
@@ -790,12 +800,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#2a2a2a",
   },
   noResultContainer: {
-    padding: 20,
+    padding: 15,
     alignItems: "center",
     justifyContent: "center",
   },
   noResultText: {
-    color: "#888",
+    color: "#3a3a3a",
     fontSize: 13,
     fontWeight: "600",
     fontStyle: "italic",

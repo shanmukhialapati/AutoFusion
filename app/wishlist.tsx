@@ -244,7 +244,7 @@ const WishlistPage = () => {
       {/* Header */}
       <View style={styles.headerRow}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push("/")}
           style={styles.headerIconBtn}
         >
           <ArrowLeft color="#F2A20C" size={24} />
@@ -314,13 +314,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingHorizontal: 10,
+    paddingTop: Platform.OS === "android" ? 20 : 10,
     paddingBottom: 16,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   headerIconBtn: {
     padding: 10,
